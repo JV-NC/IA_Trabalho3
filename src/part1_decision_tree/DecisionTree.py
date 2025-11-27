@@ -5,6 +5,7 @@ BuildDict = Dict[str, Tuple[str,float]]
 json_path = 'data/part1_JSON/parts.json'
 #TODO: Fill JSON file with all the mermaid's fluxogram available computer parts
 #TODO: Refactor questions structure to correct use of mermaid's fluxogram computer parts
+#TODO: Create in utils.py a way of make better prints in terminal, like color and stuff
 
 def load_parts(path: str)->Dict[str,float]:
     """Read the JSON file in 'path' and return its Dict."""
@@ -47,18 +48,18 @@ def make_branch(question: str, choices: Optional[List[str]] = None)-> Callable[[
     return step
 
 def print_build(build: BuildDict)->None:
-    print('\n==================== FINAL BUILD ====================')
+    print('\n'+('='*29)+' FINAL BUILD '+('='*29))
     print(f"{'Component':20} | {'Choice':35} | Price (R$)")
-    print('-' * 70)
+    print('-' * 71)
 
     total = 0
     for comp, (name, price) in build.items():
         total += price
         print(f'{comp:20} | {name:35} | {price:>8}')
 
-    print('-' * 70)
+    print('-' * 71)
     print(f"{'TOTAL':20} | {'':35} | {total:>8}")
-    print('============================================================\n')
+    print(('='*71)+'\n')
 
 def main()->None:
     build: BuildDict = {}
