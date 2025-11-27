@@ -1,6 +1,9 @@
 from typing import List, Callable, Dict, Tuple
 
 BuildDict = Dict[str, Tuple[str,float]]
+#TODO: Make a type of JSON file to read and access the parts names and prices
+#TODO: Refactor standard choices to use ['yes','y','no','n']
+#TODO: Refactor questions structure to correct use of mermaid fluxogram computer parts
 
 def ask(prompt):
     """Asks user a yes or no question and returns the answer."""
