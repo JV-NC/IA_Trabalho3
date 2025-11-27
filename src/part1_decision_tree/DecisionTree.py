@@ -1,8 +1,7 @@
-from typing import List, Callable, Dict, Tuple
+from typing import List, Callable, Dict, Tuple, Optional
 
 BuildDict = Dict[str, Tuple[str,float]]
 #TODO: Make a type of JSON file to read and access the parts names and prices
-#TODO: Refactor standard choices to use ['yes','y','no','n']
 #TODO: Refactor questions structure to correct use of mermaid fluxogram computer parts
 
 def ask(prompt):
@@ -13,17 +12,26 @@ def ask(prompt):
         if a in {"nao","não","n"}: return "nao"
         print("Use 'sim' ou 'não'.")
 
-def make_branch(question: str, choices: List[str])-> Callable[[], str]:
+def make_branch(question: str, choices: Optional[List[str]] = None)-> Callable[[], str]:
     """
     Get the question and the list of choices.
     Returns a function that, when it's called, shows the questions and return the selected option.
     """
+    if choices is None:
+        choices = ['yes', 'y', 'no', 'n']
+        show_combined = True
+    else:
+        show_combined = False
     normalized_choices = [c.lower().strip() for c in choices]
     def step()->str:
         while True:
             print(question)
-            for c in choices:
-                print(' -', c)
+            if show_combined:
+                print(' - yes (y)')
+                print(' - no (n)')
+            else:
+                for c in choices:
+                    print(' -', c)
             ans: str = input('> '.lower().strip())
             if ans in normalized_choices:
                 return ans
@@ -46,41 +54,29 @@ def print_build(build: BuildDict)->None:
 
 def main()->None:
     build: BuildDict = {}
-    standard_choices = ['yes', 'no']
+    afirmative = ['yes', 'y']
 
     #================ PERIPHERALS ================
-    ask_controller = make_branch(
-        'Do you play with a controller?',
-        standard_choices
-    )
-    if ask_controller() == 'yes':
+    ask_controller = make_branch('Do you play with a controller?')
+    if ask_controller() in afirmative:
         build['Controller'] = ('8Bitdo Ultimate 2',200.0)
     else:
         build['Controller'] = ('No controller',0.0)
 
-    ask_keyboard = make_branch(
-        'Do you do a lot of typing?',
-        standard_choices
-    )
-    if ask_keyboard() == 'yes':
+    ask_keyboard = make_branch('Do you do a lot of typing?')
+    if ask_keyboard() in afirmative:
         build['Keyboard'] = ('Kaihl Brown Mechanical', 250.0)
     else:
         build['Keyboard'] = ('Basic Keyboard', 100.0)
     
-    ask_camera = make_branch(
-        'Do you stream or record yourself?',
-        standard_choices
-    )
-    if ask_camera() == 'yes':
+    ask_camera = make_branch('Do you stream or record yourself?')
+    if ask_camera() in afirmative:
         build['Camera'] = ('USB 4K Camera', 300.0)
     else:
         build['Camera'] = ('No camera', 0.0)
 
     #================ USED PARTS ================
-    ask_used = make_branch(
-        'Willing to buy used parts?',
-        standard_choices
-    )
+    ask_used = make_branch('Willing to buy used parts?')
     used = ask_used() =='yes'
 
     #================ BRANCH: USED ================
@@ -92,8 +88,8 @@ def main()->None:
         tier = ask_tier()
         match tier:
             case 'low':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('Xeon 2680v4', 400.0)
                     build['RAM'] = ('16GB DDR4', 200.0)
                     build['GPU'] = ('RX 580', 500.0)
@@ -102,8 +98,8 @@ def main()->None:
                     build['RAM'] = ('16GB DDR4', 200.0)
                     build['GPU'] = ('GT 750 Ti', 350.0)
             case 'mid':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('Ryzen 5700X3D', 800.0)
                     build['RAM'] = ('32GB DDR4', 350.0)
                     build['GPU'] = ('RX 6700', 1200.0)
@@ -112,8 +108,8 @@ def main()->None:
                     build['RAM'] = ('32GB DDR4', 350.0)
                     build['GPU'] = ('RX 580', 500.0)
             case 'high':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('Ryzen 7800X3D', 1300)
                     build['RAM'] = ('64GB DDR4', 500)
                     build['GPU'] = ('RTX 3090', 3500)
@@ -131,8 +127,8 @@ def main()->None:
         tier = ask_tier()
         match tier:
             case 'low':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('I5 12600F', 900.0)
                     build['RAM'] = ('16GB DDR4', 250.0)
                     build['GPU'] = ('RX 6600', 900.0)
@@ -141,8 +137,8 @@ def main()->None:
                     build['RAM'] = ('16GB DDR4', 250.0)
                     build['GPU'] = ('Vega 8', 0.0)
             case 'mid':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('Ryzen 7600F', 1000.0)
                     build['RAM'] = ('32GB DDR5', 450.0)
                     build['GPU'] = ('RTX 4070', 2500.0)
@@ -151,8 +147,8 @@ def main()->None:
                     build['RAM'] = ('32GB DDR5', 450.0)
                     build['GPU'] = ('RX 6600', 900.0)
             case 'high':
-                ask_gpu = make_branch('Do you need GPU?', standard_choices)
-                if ask_gpu() == 'yes':
+                ask_gpu = make_branch('Do you need GPU?')
+                if ask_gpu() in afirmative:
                     build['CPU'] = ('Ryzen 9800X3D', 2000.0)
                     build['RAM'] = ('64GB DDR5', 700.0)
                     build['GPU'] = ('RTX 4090', 5500.0)
@@ -162,40 +158,28 @@ def main()->None:
                     build['GPU'] = ('RTX 4070', 2500.0)
 
     #================ Power Supply Unit (Font) ================
-    ask_upgrade = make_branch(
-        'Do you intend on upgrading this PC in the future?',
-        standard_choices
-    )
-    if ask_upgrade() == 'yes':
+    ask_upgrade = make_branch('Do you intend on upgrading this PC in the future?')
+    if ask_upgrade() in afirmative:
         build['PSU'] = ('700W 80+ Bronze', 300.0)
     else:
         build['PSU'] = ('500W 80+ Bronze',200.0)
 
     #================ MONITOR ================
-    ask_entertainment = make_branch(
-        'Do you intend on watching entertainment in this PC?',
-        standard_choices
-    )
-    if ask_entertainment() == 'yes':
+    ask_entertainment = make_branch('Do you intend on watching entertainment in this PC?')
+    if ask_entertainment() in afirmative:
         build['Monitor'] = ('27" 1440p + Soundbar', 1200.0)
     else:
         build['Monitor'] = ('23" 1440p', 800.0)
 
-    ask_competitive = make_branch(
-        'Do you play competitive games?',
-        standard_choices
-    )
-    if ask_competitive == 'yes':
+    ask_competitive = make_branch('Do you play competitive games?')
+    if ask_competitive in afirmative:
         build['FPS'] = ('144 Hz', 200.0)
     else:
         build['FPS'] = ('60 Hz', 0.0)
     
     #================ WIFI ================
-    ask_wifi = make_branch(
-        'Do you have access to an ethernet cable for the PC?',
-        standard_choices
-    )
-    if ask_wifi() == 'yes':
+    ask_wifi = make_branch('Do you have access to an ethernet cable for the PC?')
+    if ask_wifi() in afirmative:
         build['Wifi'] = ('Bluetooth Dongle (Optional)', 50.0)
     else:
         build['Wifi'] = ('PCIe Wi-Fi AX200', 150.0)
