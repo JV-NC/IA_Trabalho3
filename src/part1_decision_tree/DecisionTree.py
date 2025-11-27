@@ -1,16 +1,24 @@
 from typing import List, Callable, Dict, Tuple, Optional
+import json
 
 BuildDict = Dict[str, Tuple[str,float]]
-#TODO: Make a type of JSON file to read and access the parts names and prices
-#TODO: Refactor questions structure to correct use of mermaid fluxogram computer parts
+json_path = 'data/part1_JSON/parts.json'
+#TODO: Fill JSON file with all the mermaid's fluxogram available computer parts
+#TODO: Refactor questions structure to correct use of mermaid's fluxogram computer parts
 
-def ask(prompt):
-    """Asks user a yes or no question and returns the answer."""
-    while True:
-        a = input(f"{prompt} (sim/não): ").strip().lower()
-        if a in {"sim","s"}: return "sim"
-        if a in {"nao","não","n"}: return "nao"
-        print("Use 'sim' ou 'não'.")
+def load_parts(path: str)->Dict[str,float]:
+    """Read the JSON file in 'path' and return its Dict."""
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def pick_part(category: str, item: str, parts: Dict[str, float], build: BuildDict)->None:
+    """Search in Dict of parts for a item in a category and returns the updated build."""
+    if category not in parts:
+        raise ValueError(f'Invalid category: {category}')
+    if item not in parts[category]:
+        raise ValueError(f'Item {item} don\'t exist in category {category}')
+    
+    build[category] = (item, parts[category][item])
 
 def make_branch(question: str, choices: Optional[List[str]] = None)-> Callable[[], str]:
     """
@@ -56,24 +64,25 @@ def main()->None:
     build: BuildDict = {}
     afirmative = ['yes', 'y']
 
+    parts = load_parts(json_path)
     #================ PERIPHERALS ================
     ask_controller = make_branch('Do you play with a controller?')
     if ask_controller() in afirmative:
-        build['Controller'] = ('8Bitdo Ultimate 2',200.0)
+        pick_part('Controller','8Bitdo Ultimate 2',parts,build)
     else:
-        build['Controller'] = ('No controller',0.0)
+        pick_part('Controller','No controller',parts,build)
 
     ask_keyboard = make_branch('Do you do a lot of typing?')
     if ask_keyboard() in afirmative:
-        build['Keyboard'] = ('Kaihl Brown Mechanical', 250.0)
+        pick_part('Keyboard','Kaihl Brown Mechanical',parts,build)
     else:
-        build['Keyboard'] = ('Basic Keyboard', 100.0)
+        pick_part('Keyboard','Basic Keyboard',parts,build)
     
     ask_camera = make_branch('Do you stream or record yourself?')
     if ask_camera() in afirmative:
-        build['Camera'] = ('USB 4K Camera', 300.0)
+        pick_part('Camera','USB 4K Camera',parts,build)
     else:
-        build['Camera'] = ('No camera', 0.0)
+        pick_part('Camera','No camera',parts,build)
 
     #================ USED PARTS ================
     ask_used = make_branch('Willing to buy used parts?')
@@ -90,33 +99,33 @@ def main()->None:
             case 'low':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('Xeon 2680v4', 400.0)
-                    build['RAM'] = ('16GB DDR4', 200.0)
-                    build['GPU'] = ('RX 580', 500.0)
+                    pick_part('CPU','Xeon 2680v4',parts,build)
+                    pick_part('RAM','16GB DDR4',parts,build)
+                    pick_part('GPU','RX 580',parts,build)
                 else:
-                    build['CPU'] = ('Xeon 2680v4', 400.0)
-                    build['RAM'] = ('16GB DDR4', 200.0)
-                    build['GPU'] = ('GT 750 Ti', 350.0)
+                    pick_part('CPU','Xeon 2680v4',parts,build)
+                    pick_part('RAM','16GB DDR4',parts,build)
+                    pick_part('GPU','GT 750 Ti',parts,build)
             case 'mid':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('Ryzen 5700X3D', 800.0)
-                    build['RAM'] = ('32GB DDR4', 350.0)
-                    build['GPU'] = ('RX 6700', 1200.0)
+                    pick_part('CPU','Ryzen 5700X3D',parts,build)
+                    pick_part('RAM','32GB DDR4',parts,build)
+                    pick_part('GPU','RX 6700',parts,build)
                 else:
-                    build['CPU'] = ('Ryzen 5700X3D', 800.0)
-                    build['RAM'] = ('32GB DDR4', 350.0)
-                    build['GPU'] = ('RX 580', 500.0)
+                    pick_part('CPU','Ryzen 5700X3D',parts,build)
+                    pick_part('RAM','32GB DDR4',parts,build)
+                    pick_part('GPU','RX 580',parts,build)
             case 'high':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('Ryzen 7800X3D', 1300)
-                    build['RAM'] = ('64GB DDR4', 500)
-                    build['GPU'] = ('RTX 3090', 3500)
+                    pick_part('CPU','Ryzen 7800X3D',parts,build)
+                    pick_part('RAM','64GB DDR4',parts,build)
+                    pick_part('GPU','RTX 3090',parts,build)
                 else:
-                    build['CPU'] = ('Ryzen 7800X3D', 1300)
-                    build['RAM'] = ('64GB DDR4', 500)
-                    build['GPU'] = ('RX 6700', 1200)
+                    pick_part('CPU','Ryzen 7800X3D',parts,build)
+                    pick_part('RAM','64GB DDR4',parts,build)
+                    pick_part('GPU','RX 6700',parts,build)
         
     #================ BRANCH: NEW ================
     else:
@@ -129,60 +138,60 @@ def main()->None:
             case 'low':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('I5 12600F', 900.0)
-                    build['RAM'] = ('16GB DDR4', 250.0)
-                    build['GPU'] = ('RX 6600', 900.0)
+                    pick_part('CPU','I5 12600F',parts,build)
+                    pick_part('RAM','16GB DDR4',parts,build)
+                    pick_part('GPU','RX 6600',parts,build)
                 else:
-                    build['CPU'] = ('Ryzen 5600G (APU)', 600.0)
-                    build['RAM'] = ('16GB DDR4', 250.0)
-                    build['GPU'] = ('Vega 8', 0.0)
+                    pick_part('CPU','Ryzen 5600G (APU)',parts,build)
+                    pick_part('RAM','16GB DDR4',parts,build)
+                    pick_part('GPU','Vega 8',parts,build)
             case 'mid':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('Ryzen 7600F', 1000.0)
-                    build['RAM'] = ('32GB DDR5', 450.0)
-                    build['GPU'] = ('RTX 4070', 2500.0)
+                    pick_part('CPU','Ryzen 7600',parts,build)
+                    pick_part('RAM','32GB DDR5',parts,build)
+                    pick_part('GPU','RTX 4070',parts,build)
                 else:
-                    build['CPU'] = ('Ryzen 7600F', 1000.0)
-                    build['RAM'] = ('32GB DDR5', 450.0)
-                    build['GPU'] = ('RX 6600', 900.0)
+                    pick_part('CPU','Ryzen 7600',parts,build)
+                    pick_part('RAM','32GB DDR5',parts,build)
+                    pick_part('GPU','RX 6600',parts,build)
             case 'high':
                 ask_gpu = make_branch('Do you need GPU?')
                 if ask_gpu() in afirmative:
-                    build['CPU'] = ('Ryzen 9800X3D', 2000.0)
-                    build['RAM'] = ('64GB DDR5', 700.0)
-                    build['GPU'] = ('RTX 4090', 5500.0)
+                    pick_part('CPU','Ryzen 9800X3D',parts,build)
+                    pick_part('RAM','64GB DDR5',parts,build)
+                    pick_part('GPU','RTX 4090',parts,build)
                 else:
-                    build['CPU'] = ('Ryzen 9800X3D', 2000.0)
-                    build['RAM'] = ('64GB DDR5', 700.0)
-                    build['GPU'] = ('RTX 4070', 2500.0)
+                    pick_part('CPU','Ryzen 9800X3D',parts,build)
+                    pick_part('RAM','64GB DDR5',parts,build)
+                    pick_part('GPU','RTX 4070',parts,build)
 
     #================ Power Supply Unit (Font) ================
     ask_upgrade = make_branch('Do you intend on upgrading this PC in the future?')
     if ask_upgrade() in afirmative:
-        build['PSU'] = ('700W 80+ Bronze', 300.0)
+        pick_part('PSU','700W 80+ Bronze',parts,build)
     else:
-        build['PSU'] = ('500W 80+ Bronze',200.0)
+        pick_part('PSU','500W 80+ Bronze',parts,build)
 
     #================ MONITOR ================
     ask_entertainment = make_branch('Do you intend on watching entertainment in this PC?')
     if ask_entertainment() in afirmative:
-        build['Monitor'] = ('27" 1440p + Soundbar', 1200.0)
+        pick_part('Monitor','27" 1440p + Soundbar',parts,build)
     else:
-        build['Monitor'] = ('23" 1440p', 800.0)
+        pick_part('Monitor','23" 1440p',parts,build)
 
     ask_competitive = make_branch('Do you play competitive games?')
     if ask_competitive in afirmative:
-        build['FPS'] = ('144 Hz', 200.0)
+        pick_part('FPS','144 Hz',parts,build)
     else:
-        build['FPS'] = ('60 Hz', 0.0)
+        pick_part('FPS','60 Hz',parts,build)
     
     #================ WIFI ================
     ask_wifi = make_branch('Do you have access to an ethernet cable for the PC?')
     if ask_wifi() in afirmative:
-        build['Wifi'] = ('Bluetooth Dongle (Optional)', 50.0)
+        pick_part('Wifi','Bluetooth Dongle (Optional)',parts,build)
     else:
-        build['Wifi'] = ('PCIe Wi-Fi AX200', 150.0)
+        pick_part('Wifi','PCIe Wi-Fi AX200',parts,build)
 
     #================ FINAL PRINT ================
     print_build(build)

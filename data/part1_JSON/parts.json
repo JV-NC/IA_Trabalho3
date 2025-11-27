@@ -1,0 +1,67 @@
+{
+    "Controller": {
+        "8Bitdo Ultimate 2": 200.0,
+        "No controller": 0.0
+    },
+    "Keyboard": {
+        "Kaihl Brown Mechanical": 250.0,
+        "Basic Keyboard": 100.0
+    },
+    "Camera": {
+        "USB 4K Camera": 300.0,
+        "No camera": 0.0
+    },
+    "Motherboard": {
+        "básica": 450,
+        "intermediária": 750,
+        "topo_de_linha": 1200
+    },
+    "CPU": {
+        "Xeon 2680v4": 400.0,
+        "Ryzen 5700X3D": 800.0,
+        "Ryzen 7800X3D": 1300.0,
+        "I5 12600F": 900.0,
+        "Ryzen 5600G (APU)": 600.0,
+        "Ryzen 7600": 1000.0,
+        "Ryzen 9800X3D": 2000.0
+    },
+    "RAM": {
+        "16GB DDR4": 200.0,
+        "32GB DDR4": 350.0,
+        "64GB DDR4": 500.0,
+        "32GB DDR5": 450.0,
+        "64GB DDR5": 700.0
+
+    },
+    "SSD": {
+        "ssd_240gb": 120,
+        "ssd_480gb": 220,
+        "ssd_1tb": 390
+    },
+    "PSU": {
+        "700W 80+ Bronze": 300.0,
+        "500W 80+ Bronze": 200.0
+    },
+    "GPU": {
+        "RX 580": 500.0,
+        "GT 750 Ti": 700.0,
+        "RX 6700": 1200.0,
+        "RTX 3090": 3500.0,
+        "RX 6600": 900.0,
+        "Vega 8": 0.0,
+        "RTX 4070": 2500.0,
+        "RTX 4090": 5500.0
+    },
+    "Monitor": {
+        "27\" 1440p + Soundbar": 1200.0,
+        "23\" 1440p": 800.0
+    },
+    "FPS": {
+        "144 Hz": 200.0,
+        "60 Hz": 0.0
+    },
+    "Wifi": {
+        "Bluetooth Dongle (Optional)": 50.0,
+        "PCIe Wi-Fi AX200": 150.0
+    }
+}
