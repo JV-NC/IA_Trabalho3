@@ -37,7 +37,8 @@
         "8GB DDR4": 140.0,
         "16GB DDR4": 250.0,
         "16GB DDR5": 400.0,
-        "32GB DDR5": 800.0
+        "32GB DDR5": 800.0,
+        "64GB DDR5": 1400.0
     },
 
     "PSU": {
@@ -90,6 +91,7 @@
     "Mouse": {
         "Deathadder Essential": 70.0,
         "Deathadder V2 Mini": 200.0,
-        "Deathadder V2": 350.0
+        "Deathadder V2": 350.0,
+        "Basic Mouse": 40.0
     }
 }
