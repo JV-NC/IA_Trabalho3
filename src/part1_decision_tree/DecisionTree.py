@@ -7,7 +7,6 @@ from utils import print_build
 
 BuildDict = Dict[str, Tuple[str,float]]
 json_path = 'data/part1_JSON/parts.json'
-#TODO: Implement Motherboard build on main()
 
 def load_parts(path: str)->Dict[str,float]:
     """Read the JSON file in 'path' and return its Dict."""
@@ -103,6 +102,7 @@ def main()->None:
             case 'low':
                 ask_gpu = make_branch('Do you need GPU?')
                 pick_part('CPU','Xeon 2680v4',parts,build)
+                pick_part('Motherboard', 'X99 (Xeon)',parts,build)
                 pick_part('RAM','16GB DDR4',parts,build)
                 if ask_gpu() in afirmative:
                     pick_part('GPU','RX 580',parts,build)
@@ -111,6 +111,7 @@ def main()->None:
             case 'mid':
                 ask_gpu = make_branch('Do you need GPU?')
                 pick_part('CPU','Ryzen 5700X3D',parts,build)
+                pick_part('Motherboard', 'B450M (AM4)',parts,build)
                 pick_part('RAM','32GB DDR4',parts,build)
                 if ask_gpu() in afirmative:
                     pick_part('GPU','RX 6700',parts,build)
@@ -119,6 +120,7 @@ def main()->None:
             case 'high':
                 ask_gpu = make_branch('Do you need GPU?')
                 pick_part('CPU','Ryzen 7800X3D',parts,build)
+                pick_part('Motherboard', 'X670 (AM5 High-End)',parts,build)
                 pick_part('RAM','64GB DDR4',parts,build)
                 if ask_gpu() in afirmative:
                     pick_part('GPU','RTX 3090',parts,build)
@@ -139,13 +141,16 @@ def main()->None:
                 pick_part('RAM','16GB DDR4',parts,build)
                 if gpu in afirmative:
                     pick_part('CPU','I5 12600F',parts,build)
+                    pick_part('Motherboard', 'B660 DDR4 (Intel 12th)',parts,build)
                     pick_part('GPU','RX 6600',parts,build)
                 else:
                     pick_part('CPU','Ryzen 5600G (APU)',parts,build)
+                    pick_part('Motherboard', 'X570 (AM4 High-End)',parts,build)
                     pick_part('GPU','Vega 8',parts,build)
             case 'mid':
                 ask_gpu = make_branch('Do you need GPU?')
                 pick_part('CPU','Ryzen 7600',parts,build)
+                pick_part('Motherboard', 'B650 (AM5)',parts,build)
                 pick_part('RAM','32GB DDR5',parts,build)
                 if ask_gpu() in afirmative:
                     pick_part('GPU','RTX 4070',parts,build)
@@ -154,6 +159,7 @@ def main()->None:
             case 'high':
                 ask_gpu = make_branch('Do you need GPU?')
                 pick_part('CPU','Ryzen 9800X3D',parts,build)
+                pick_part('Motherboard', 'X670 (AM5 High-End)',parts,build)
                 pick_part('RAM','64GB DDR5',parts,build)
                 if ask_gpu() in afirmative:
                     pick_part('GPU','RTX 4090',parts,build)
