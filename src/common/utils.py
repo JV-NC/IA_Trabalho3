@@ -1,4 +1,9 @@
-from typing import Dict
+from typing import Optional, Dict, List, Tuple
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -58,3 +63,51 @@ def print_build(build) -> None:
     )
 
     print(color("=" * 71, BORDER) + "\n")
+
+def load_dataset(
+        csv_path: str,
+        target_column: str,
+        n_splits: int=5,
+        normalize: bool=True,
+        apply_pca: bool=False,
+        pca_components: int=2,
+        ignore_columns: Optional[List[str]]=None
+        ) ->List[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """
+    Load a CSV dataset and apply preprocessing:
+        feature e label split
+        normalization (optional)
+        PCA (optional)
+        KFold
+    Returns a list of (X_train, X_test, y_train, y_test) for each fold
+    """
+    df = pd.read_csv(csv_path)
+
+    #Drop ignored columns (optional)
+    if ignore_columns:
+        cols_to_drop = [col for col in ignore_columns if col !=target_column]
+        df = df.drop(columns=cols_to_drop, errors='ignore')
+    
+    #slit in feature and label
+    X = df.drop(columns=[target_column]).values
+    y = df[target_column].values
+
+    #normalize (optional)
+    if normalize:
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X)
+    
+    #apply pca with pca_components (optional)
+    if apply_pca:
+        pca = PCA(n_components=pca_components)
+        X = pca.fit_transform(X)
+    
+    #KFold
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+    folds: List[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]] = []
+
+    for train_idx, test_idx in skf.split(X,y):
+        folds.append((X[train_idx], X[test_idx], y[train_idx], y[test_idx]))
+    
+    return folds
