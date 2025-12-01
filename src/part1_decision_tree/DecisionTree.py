@@ -1,10 +1,13 @@
 from typing import List, Callable, Dict, Tuple, Optional
 import json
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
+from utils import print_build
 
 BuildDict = Dict[str, Tuple[str,float]]
 json_path = 'data/part1_JSON/parts.json'
 #TODO: Implement Motherboard build on main()
-#TODO: Create in utils.py a way of make better prints in terminal, like color and stuff
 
 def load_parts(path: str)->Dict[str,float]:
     """Read the JSON file in 'path' and return its Dict."""
@@ -46,19 +49,19 @@ def make_branch(question: str, choices: Optional[List[str]] = None)-> Callable[[
             print('Invalid answer. Pick a valid option!\n')
     return step
 
-def print_build(build: BuildDict)->None:
-    print('\n'+('='*29)+' FINAL BUILD '+('='*29))
-    print(f"{'Component':20} | {'Choice':35} | Price (R$)")
-    print('-' * 71)
+# def print_build(build: BuildDict)->None:
+#     print('\n'+('='*29)+' FINAL BUILD '+('='*29))
+#     print(f"{'Component':20} | {'Choice':35} | Price (R$)")
+#     print('-' * 71)
 
-    total = 0
-    for comp, (name, price) in build.items():
-        total += price
-        print(f'{comp:20} | {name:35} | {price:>8}')
+#     total = 0
+#     for comp, (name, price) in build.items():
+#         total += price
+#         print(f'{comp:20} | {name:35} | {price:>8}')
 
-    print('-' * 71)
-    print(f"{'TOTAL':20} | {'':35} | {total:>8}")
-    print(('='*71)+'\n')
+#     print('-' * 71)
+#     print(f"{'TOTAL':20} | {'':35} | {total:>8}")
+#     print(('='*71)+'\n')
 
 def main()->None:
     build: BuildDict = {}
