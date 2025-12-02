@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 RESET = "\033[0m"
 BOLD = "\033[1m"
@@ -111,3 +112,51 @@ def load_dataset(
         folds.append((X[train_idx], X[test_idx], y[train_idx], y[test_idx]))
     
     return folds
+
+def evaluate_model(y_true: np.ndarray,
+                   y_pred: np.ndarray,
+                   metrics: Optional[List[str]] = None,
+                   average: str = 'macro'
+                   )-> Dict[str, float]:
+    """
+    Evaluate a model using selected metrics.
+    Args:
+        y_true: array with true labels;
+        y_pred: array with model predictions;
+        metrics: list of desired metrics;
+        average: type of score analysis ['macro', 'micro', 'weighted', 'binary']
+    
+
+    Returns: dict with metrics name as key and value as value. 
+    """
+    #if no metric is provided, calculate all of them:
+    if metrics is None:
+        metrics = ['accuracy', 'precision', 'recall', 'f1', 'roc_auc']
+    
+    performance = {}
+
+    if 'accuracy' in metrics:
+        performance['accuracy'] = accuracy_score(y_true,y_pred)
+
+    if 'precision' in metrics:
+        performance['precision'] = precision_score(y_true,y_pred,average=average) #needs to change to multiclass
+
+    if 'recall' in metrics:
+        performance['recall'] = recall_score(y_true,y_pred,average=average)
+
+    if 'f1' in metrics:
+        performance['f1'] = f1_score(y_true,y_pred,average=average)
+    
+    if 'roc_auc' in metrics:
+        # For multiclass, uses OVR automatically.
+        try:
+            performance['roc_auc'] = roc_auc_score(
+                y_true, 
+                y_pred, 
+                multi_class="ovr",
+                average=average
+            )
+        except:
+            performance['roc_auc'] = np.nan  # if its not possible to calculate
+    
+    return performance
