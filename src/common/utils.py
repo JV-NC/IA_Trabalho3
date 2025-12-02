@@ -153,7 +153,7 @@ def evaluate_model(y_true: np.ndarray,
             performance['roc_auc'] = roc_auc_score(
                 y_true, 
                 y_pred, 
-                multi_class="ovr",
+                multi_class='ovr',
                 average=average
             )
         except:
