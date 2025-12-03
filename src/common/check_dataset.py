@@ -2,7 +2,7 @@ from typing import Optional
 import pandas as pd
 import numpy as np
 
-csv_path = 'data/kaggle_dataset/WineQT.csv'
+csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 
 def analisar_dataset(csv_path: str, target: Optional[str]=None, max_classes_target: int=20):
     print('='*80)
@@ -49,7 +49,7 @@ def analisar_dataset(csv_path: str, target: Optional[str]=None, max_classes_targ
     print('\nPercentual por classe:')
     print(df[target].value_counts(normalize=True) * 100)
 
-    # 4. AVALIAÇÃO DE BALANCEAMENTO
+    # 4. AVALIAÇÃO DE BALANCEAMENTO\
     print('\nAvaliação de balanceamento:')
     class_counts = df[target].value_counts(normalize=True)
     imbalance = class_counts.max() - class_counts.min()
@@ -99,7 +99,7 @@ def analisar_dataset(csv_path: str, target: Optional[str]=None, max_classes_targ
     print('\nAnálise concluída!\n')
 
 def main():
-    analisar_dataset(csv_path, target='quality')
+    analisar_dataset(csv_path, target='satisfaction')
 
 if __name__=='__main__':
     main()

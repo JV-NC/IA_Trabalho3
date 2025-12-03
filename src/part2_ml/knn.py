@@ -12,12 +12,12 @@ from utils import load_dataset, evaluate_model
 
 #TODO: implement main()
 
-csv_path = 'data/kaggle_dataset/WineQT.csv'
-target_column = 'quality'
+csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
+target_column = 'satisfaction'
 n_splits = 5
 pca = True
 pca_components = 5
-ignore_columns = ['Id']
+ignore_columns = ['Gender','Customer Type','Type of Travel','Class']
 
 folds = load_dataset(csv_path,target_column,n_splits,True,pca,pca_components,ignore_columns)
 
