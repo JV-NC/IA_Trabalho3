@@ -139,13 +139,13 @@ def evaluate_model(y_true: np.ndarray,
         performance['accuracy'] = accuracy_score(y_true,y_pred)
 
     if 'precision' in metrics:
-        performance['precision'] = precision_score(y_true,y_pred,average=average) #needs to change to multiclass
+        performance['precision'] = precision_score(y_true,y_pred,average=average,zero_division=0) #needs to change to multiclass
 
     if 'recall' in metrics:
-        performance['recall'] = recall_score(y_true,y_pred,average=average)
+        performance['recall'] = recall_score(y_true,y_pred,average=average,zero_division=0)
 
     if 'f1' in metrics:
-        performance['f1'] = f1_score(y_true,y_pred,average=average)
+        performance['f1'] = f1_score(y_true,y_pred,average=average,zero_division=0)
     
     if 'roc_auc' in metrics:
         # For multiclass, uses OVR automatically.
