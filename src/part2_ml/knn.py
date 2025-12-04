@@ -12,6 +12,7 @@ from utils import load_dataset, evaluate_model
 
 #TODO: implement main()
 #TODO: test all scalers and imputers, test weights of KNN
+#TODO: test diferent values of n_splits and pca_components
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'
@@ -21,7 +22,7 @@ pca = True
 pca_components = 5
 ignore_columns = []
 encoder = 'onehot'
-imputer_strategy = 'mean'
+imputer_strategy = 'constant'
 
 folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
 

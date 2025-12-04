@@ -116,7 +116,10 @@ def load_dataset(
 
     #handle missing values (imputation)
     imputer_strategy = imputer_strategy if imputer_strategy in ['mean','median','most_frequent','constant'] else 'mean'
-    imputer = SimpleImputer(strategy=imputer_strategy)  # You can choose 'median' or a constant value instead
+    if imputer_strategy == 'constant':
+        imputer = SimpleImputer(strategy=imputer_strategy, fill_value=0.0)
+    else:
+        imputer = SimpleImputer(strategy=imputer_strategy)
     X = imputer.fit_transform(X)
 
     #normalize (optional)
