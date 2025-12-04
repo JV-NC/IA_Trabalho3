@@ -17,9 +17,9 @@ target_column = 'satisfaction'
 n_splits = 5
 pca = True
 pca_components = 5
-ignore_columns = ['Gender','Customer Type','Type of Travel','Class']
+ignore_columns = []
 
-folds = load_dataset(csv_path,target_column,n_splits,True,pca,pca_components,ignore_columns)
+folds = load_dataset(csv_path,target_column,n_splits,True,pca,pca_components,ignore_columns,'onehot')
 
 #Pick best K using only first fold
 X_train, X_test, y_train, y_test = folds[0]
