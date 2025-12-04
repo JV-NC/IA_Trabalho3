@@ -65,6 +65,7 @@ def print_build(build) -> None:
 
     print(color("=" * 71, BORDER) + "\n")
 
+#TODO: apply one-hot encoding or label encoding for 'object' columns
 def load_dataset(
         csv_path: str,
         target_column: str,
