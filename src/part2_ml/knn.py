@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
@@ -11,15 +11,19 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
 from utils import load_dataset, evaluate_model
 
 #TODO: implement main()
+#TODO: test all scalers and imputers, test weights of KNN
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'
 n_splits = 5
+normalize = 'minmax'
 pca = True
 pca_components = 5
 ignore_columns = []
+encoder = 'onehot'
+imputer_strategy = 'mean'
 
-folds = load_dataset(csv_path,target_column,n_splits,True,pca,pca_components,ignore_columns,'onehot')
+folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
 
 #Pick best K using only first fold
 X_train, X_test, y_train, y_test = folds[0]
@@ -29,7 +33,7 @@ scores = []
 cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
 for k in k_values:
-    pipe = make_pipeline(StandardScaler(),KNeighborsClassifier(n_neighbors=k))
+    pipe = make_pipeline(MinMaxScaler(),KNeighborsClassifier(n_neighbors=k))
     score = cross_val_score(pipe, X_train, y_train, cv=cv).mean()
     scores.append(score)
 
@@ -58,7 +62,7 @@ for i, (X_train, X_test, y_train, y_test) in enumerate(folds):
     metrics = evaluate_model(
         y_test,
         y_pred,
-        metrics=['accuracy', 'precision', 'recall', 'f1'],
+        metrics=['accuracy', 'precision', 'recall', 'f1','roc_auc'],
         average='macro'
     )
 

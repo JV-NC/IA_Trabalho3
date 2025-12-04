@@ -2,7 +2,7 @@ from typing import Optional, Dict, List, Tuple
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
@@ -66,16 +66,16 @@ def print_build(build) -> None:
 
     print(color("=" * 71, BORDER) + "\n")
 
-#TODO: apply one-hot encoding or label encoding for 'object' columns
 def load_dataset(
         csv_path: str,
         target_column: str,
         n_splits: int=5,
-        normalize: bool=True,
+        normalize: str='std',
         apply_pca: bool=False,
         pca_components: int=2,
         ignore_columns: Optional[List[str]]=None,
-        encoding: str='onehot'
+        encoding: str='onehot',
+        imputer_strategy: str='mean'
         ) ->List[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
     Load a CSV dataset and apply preprocessing:
@@ -115,13 +115,20 @@ def load_dataset(
             X[col] = le.fit_transform[col]
 
     #handle missing values (imputation)
-    imputer = SimpleImputer(strategy='mean')  # You can choose 'median' or a constant value instead
+    imputer_strategy = imputer_strategy if imputer_strategy in ['mean','median','most_frequent','constant'] else 'mean'
+    imputer = SimpleImputer(strategy=imputer_strategy)  # You can choose 'median' or a constant value instead
     X = imputer.fit_transform(X)
 
     #normalize (optional)
-    if normalize:
+    if normalize == 'std':
         scaler = StandardScaler()
         X = scaler.fit_transform(X)
+    elif normalize == 'minmax':
+        scaler = MinMaxScaler()
+        X = scaler.fit_transform(X)
+    elif normalize == 'abs':
+        scaler = MaxAbsScaler()
+        X= scaler.fit_transform(X)
     
     #apply pca with pca_components (optional)
     if apply_pca:
