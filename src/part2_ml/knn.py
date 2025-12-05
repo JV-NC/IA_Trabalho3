@@ -1,67 +1,83 @@
 import pandas as pd
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.preprocessing import StandardScaler  # <- correção do import
-from sklearn.model_selection import cross_val_score, train_test_split, StratifiedKFold
-from sklearn.metrics import accuracy_score, precision_score, recall_score, classification_report
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 import matplotlib.pyplot as plt
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
+from utils import load_dataset, evaluate_model
 
-# Carregar o dataset (substitua 'seu_dataset.csv' pelo arquivo baixado)
-df = pd.read_csv("seu_dataset.csv")
+#TODO: test all scalers and imputers, test weights of KNN
+#TODO: test diferent values of n_splits and pca_components
+#TODO: implement output files or matplotlib models evaluation
 
-# Inspecionar os dados
-print(df.head())
+csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
+target_column = 'satisfaction'
+n_splits = 5
+normalize = 'minmax'
+pca = True
+pca_components = 5
+ignore_columns = []
+encoder = 'onehot'
+imputer_strategy = 'constant'
 
-# Pré-processar os dados (ajuste as colunas conforme necessário)
-X = df[['coluna1', 'coluna2', 'coluna3']].values  # Insira as colunas de entrada
-y = df['target'].values                            # Insira a coluna alvo
+def main():
+    folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
 
-# Dividir os dados em treino e teste (com estratificação e semente fixa)
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
-)
+    #Pick best K using only first fold
+    X_train, X_test, y_train, y_test = folds[0]
 
-# ===== Escolha do melhor k SEM olhar para o teste (evita vazamento) =====
-k_values = list(range(1, 31))
-scores = []
+    k_values = list(range(1,31,2))
+    scores = []
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
 
-cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-for k in k_values:
-    # Escalonamento dentro do CV via pipeline (evita vazamento dentro das dobras)
-    pipe = make_pipeline(StandardScaler(), KNeighborsClassifier(n_neighbors=k))
-    score = cross_val_score(pipe, X_train, y_train, cv=cv).mean()
-    scores.append(score)
+    for k in k_values:
+        pipe = make_pipeline(MinMaxScaler(),KNeighborsClassifier(n_neighbors=k))
+        score = cross_val_score(pipe, X_train, y_train, cv=cv).mean()
+        scores.append(score)
 
-# Curva do cotovelo
-plt.figure(figsize=(10, 6))
-plt.plot(k_values, scores)
-plt.xlabel("K Values")
-plt.ylabel("Accuracy (CV)")
-plt.title("KNN Classifier Accuracy for Different K Values")
-plt.xticks(k_values)
-plt.show()
+    #elbow curve
+    plt.figure(figsize=(10, 5))
+    plt.plot(k_values, scores)
+    plt.xlabel("K")
+    plt.ylabel("Acurácia (CV)")
+    plt.title("Curva do Cotovelo - escolha do melhor K")
+    plt.grid()
+    plt.show()
 
-best_k = k_values[int(np.argmax(scores))]
-print(f"Melhor k (CV no treino): {best_k}")
+    best_k = k_values[int(np.argmax(scores))]
+    #best_k = 10
+    print(f"\nBest K found: {best_k}")
 
-# ===== Treino final no treino e avaliação no teste =====
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+    #Train and evaluate model
+    results = []
 
-knn = KNeighborsClassifier(n_neighbors=best_k)
-knn.fit(X_train, y_train)
+    for i, (X_train, X_test, y_train, y_test) in enumerate(folds):
+        knn = KNeighborsClassifier(n_neighbors=best_k,weights='distance')
+        knn.fit(X_train, y_train)
 
-# Predição e métricas
-y_pred = knn.predict(X_test)
+        y_pred = knn.predict(X_test)
 
-accuracy = accuracy_score(y_test, y_pred)
-# 'macro' funciona bem para multi-classe; em binário pode usar average='binary'
-precision = precision_score(y_test, y_pred, average='macro', zero_division=0)
-recall = recall_score(y_test, y_pred, average='macro', zero_division=0)
+        metrics = evaluate_model(
+            y_test,
+            y_pred,
+            metrics=['accuracy', 'precision', 'recall', 'f1','roc_auc'],
+            average='macro'
+        )
 
-print(f"Acurácia:  {accuracy:.2f}")
-print(f"Precisão:  {precision:.2f} (macro)")
-print(f"Recall:    {recall:.2f} (macro)")
-print("\nRelatório de Classificação:\n", classification_report(y_test, y_pred, zero_division=0))
+        print(f"\n===== FOLD {i+1} =====")
+        for m, v in metrics.items():
+            print(f"{m}: {v:.4f}")
+
+        results.append(metrics)
+
+        df_results = pd.DataFrame(results)
+
+    print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
+    print(df_results.mean())
+
+if __name__ == '__main__':
+    main()

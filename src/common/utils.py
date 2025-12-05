@@ -2,7 +2,8 @@ from typing import Optional, Dict, List, Tuple
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, OneHotEncoder, LabelEncoder
+from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
@@ -69,10 +70,12 @@ def load_dataset(
         csv_path: str,
         target_column: str,
         n_splits: int=5,
-        normalize: bool=True,
+        normalize: str='std',
         apply_pca: bool=False,
         pca_components: int=2,
-        ignore_columns: Optional[List[str]]=None
+        ignore_columns: Optional[List[str]]=None,
+        encoding: str='onehot',
+        imputer_strategy: str='mean'
         ) ->List[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
     Load a CSV dataset and apply preprocessing:
@@ -80,6 +83,7 @@ def load_dataset(
         normalization (optional)
         PCA (optional)
         KFold
+        Encoding categorical columns (optional)
     Returns a list of (X_train, X_test, y_train, y_test) for each fold
     """
     df = pd.read_csv(csv_path)
@@ -90,13 +94,44 @@ def load_dataset(
         df = df.drop(columns=cols_to_drop, errors='ignore')
     
     #slit in feature and label
-    X = df.drop(columns=[target_column]).values
+    X = df.drop(columns=[target_column])
     y = df[target_column].values
 
+    #apply Label encoder if target is categorical
+    if df[target_column].dtype =='object' or df[target_column].dtype.name == 'category':
+        le = LabelEncoder()
+        y = le.fit_transform(y)
+
+    #apply encoding on categorical columns
+    categorical_columns = X.select_dtypes(include=['object']).columns.tolist()
+    if encoding == 'onehot' and categorical_columns:
+        enc = OneHotEncoder(drop='first',handle_unknown='ignore',sparse_output=False)
+        encoded = enc.fit_transform(X[categorical_columns])
+        encoded_df = pd.DataFrame(encoded,columns=enc.get_feature_names_out(categorical_columns))
+        X = pd.concat([X.drop(columns=categorical_columns),encoded_df], axis=1)
+    elif encoding == 'label' and categorical_columns:
+        le = LabelEncoder()
+        for col in categorical_columns:
+            X[col] = le.fit_transform[col]
+
+    #handle missing values (imputation)
+    imputer_strategy = imputer_strategy if imputer_strategy in ['mean','median','most_frequent','constant'] else 'mean'
+    if imputer_strategy == 'constant':
+        imputer = SimpleImputer(strategy=imputer_strategy, fill_value=0.0)
+    else:
+        imputer = SimpleImputer(strategy=imputer_strategy)
+    X = imputer.fit_transform(X)
+
     #normalize (optional)
-    if normalize:
+    if normalize == 'std':
         scaler = StandardScaler()
         X = scaler.fit_transform(X)
+    elif normalize == 'minmax':
+        scaler = MinMaxScaler()
+        X = scaler.fit_transform(X)
+    elif normalize == 'abs':
+        scaler = MaxAbsScaler()
+        X= scaler.fit_transform(X)
     
     #apply pca with pca_components (optional)
     if apply_pca:
@@ -139,13 +174,13 @@ def evaluate_model(y_true: np.ndarray,
         performance['accuracy'] = accuracy_score(y_true,y_pred)
 
     if 'precision' in metrics:
-        performance['precision'] = precision_score(y_true,y_pred,average=average) #needs to change to multiclass
+        performance['precision'] = precision_score(y_true,y_pred,average=average,zero_division=0) #needs to change to multiclass
 
     if 'recall' in metrics:
-        performance['recall'] = recall_score(y_true,y_pred,average=average)
+        performance['recall'] = recall_score(y_true,y_pred,average=average,zero_division=0)
 
     if 'f1' in metrics:
-        performance['f1'] = f1_score(y_true,y_pred,average=average)
+        performance['f1'] = f1_score(y_true,y_pred,average=average,zero_division=0)
     
     if 'roc_auc' in metrics:
         # For multiclass, uses OVR automatically.
