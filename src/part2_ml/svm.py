@@ -1,58 +1,54 @@
+import pandas as pd
 import numpy as np
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
+from utils import load_dataset, evaluate_model
 
-# Carregar o conjunto de dados Iris
-data = load_iris()
-X = data.data
-y = data.target
+#TODO: maybe save model?
+#TODO: training slow, verify optimization
+#TODO: print after load dataset
 
-# Dividir os dados em conjuntos de treinamento e teste
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3
-                                                    , random_state=42)
+csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
+target_column = 'satisfaction'
+n_splits = 5
+normalize = 'std'
+pca = True
+pca_components = 3
+ignore_columns = []
+encoder = 'onehot'
+imputer_strategy = 'constant'
 
-# Padronizar os dados (muito importante para PCA e SVM)
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+def main():
+    folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
 
-# Aplicar PCA para reduzir a dimensionalidade
-pca = PCA(n_components=2)  # Reduzindo para 2 componentes principais
-X_train_pca = pca.fit_transform(X_train)
-X_test_pca = pca.transform(X_test)
+    #Train and evaluate model
+    results = []
 
-# Treinar o modelo SVM
-svm = SVC(kernel='linear')  # Você pode escolher outros kernels como 'rbf'
-svm.fit(X_train_pca, y_train)
+    for i, (X_train, X_test, y_train, y_test) in enumerate(folds):
+        svm = SVC(kernel='linear')
+        svm.fit(X_train, y_train)
 
-# Fazer previsões no conjunto de teste
-y_pred = svm.predict(X_test_pca)
+        y_pred = svm.predict(X_test)
 
-# Avaliar a precisão do modelo
-accuracy = accuracy_score(y_test, y_pred)
-print(f'Acurácia: {accuracy:.2f}')
+        metrics = evaluate_model(
+            y_test,
+            y_pred,
+            metrics=['accuracy', 'precision', 'recall', 'f1','roc_auc'],
+            average='macro'
+        )
 
-import pickle
-# Save the model to a file
-with open('svm.model', 'wb') as file:
-  pickle.dump(svm, file)
+        print(f"\n===== FOLD {i+1} =====")
+        for m, v in metrics.items():
+            print(f"{m}: {v:.4f}")
 
-# Load the model from the file
-with open('svm.model', 'rb') as file:
-  svm = pickle.load(file)
-  
-  
-# treinar o model com cross-validation
-from sklearn.model_selection import cross_val_score
-svm_cv = SVC(kernel='linear')
-scores = cross_val_score(svm_cv, X_train_pca, y_train, cv=5)
-print(f'Cross-validation scores: {scores}')
-print(f'Mean cross-validation score: {np.mean(scores):.2f}')
-# fazer as predicoes com o modelo treinado com cross-validation
-y_pred_cv = svm_cv.fit(X_train_pca, y_train).predict(X_test_pca)
-accuracy_cv = accuracy_score(y_test, y_pred_cv)
-print(f'Acurácia com cross-validation: {accuracy_cv:.2f}')
+        results.append(metrics)
+
+        df_results = pd.DataFrame(results)
+
+    print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
+    print(df_results.mean())
+
+if __name__ == '__main__':
+    main()
