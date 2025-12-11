@@ -25,7 +25,7 @@ imputer_strategy = 'constant'
 model_path = 'output/models/svm'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test):
-    """Parallel function executed for each fold and measure time."""
+    """Parallel function executed for each fold, measure time and save model."""
     start = time.perf_counter()
 
     svm = SVC(kernel='rbf')
@@ -89,6 +89,7 @@ def main():
         print(f'Fold {i+1}: {t:.3f} s')
 
     print(f'\nTotal execution time: {elapsed_total:.3f} s\n')
+    print(f'Models saved on: {model_path}')
 
 if __name__ == '__main__':
     main()
