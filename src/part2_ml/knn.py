@@ -5,12 +5,14 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 from joblib import Parallel, delayed, dump
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model
+from utils import load_dataset, evaluate_model, save_metrics_csv
 
 #TODO: test all scalers and imputers, test weights of KNN
 #TODO: test diferent values of n_splits and pca_components
@@ -28,6 +30,8 @@ imputer_strategy = 'constant'
 
 #Dir for saving models
 model_path = 'output/models/knn'
+plot_path = 'output/plots/knn'
+metrics_path = 'output/metrics/knn'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test, best_k):
     """Parallel function executed for each fold, measure time and save model."""
@@ -54,7 +58,10 @@ def train_one_fold(i, X_train, X_test, y_train, y_test, best_k):
     return i, metrics, elapsed
 
 def main():
+    #Ensure output dirs
     os.makedirs(model_path,exist_ok=True)
+    os.makedirs(plot_path,exist_ok=True)
+    os.makedirs(metrics_path,exist_ok=True)
 
     start_total = time.perf_counter()
 
@@ -79,7 +86,9 @@ def main():
     plt.ylabel("Accuracy (CV)")
     plt.title("Elbow method - pick best K")
     plt.grid()
-    plt.show()
+    plt.tight_layout()
+    plt.savefig(f"{plot_path}/elbow_method.png", dpi=300)
+    plt.close()
 
     best_k = k_values[int(np.argmax(scores))]
     #best_k = 10
@@ -109,6 +118,8 @@ def main():
     df_results = pd.DataFrame(results)
 
     elapsed_total = time.perf_counter() - start_total
+
+    save_metrics_csv(results,fold_times,metrics_path)
 
     print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
     print(df_results.mean())

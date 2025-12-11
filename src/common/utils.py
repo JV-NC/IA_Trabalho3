@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, On
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+import os
 
 RESET = '\033[0m'
 BOLD = '\033[1m'
@@ -195,3 +196,38 @@ def evaluate_model(y_true: np.ndarray,
             performance['roc_auc'] = np.nan  # if its not possible to calculate
     
     return performance
+
+def save_metrics_csv(
+        results: List[Dict[str,float]],
+        fold_times: List[float],
+        metrics_path: str,
+        filename: str = 'metrics.csv'
+)->None:
+    """
+    Saves the metrics of a fold into a CSV file.
+    Args:
+        results: List of dicts (each fold's metrics)
+        fold_times: List of float (seconds spent per fold)
+        metrics_path: Directory where the CSV will be saved
+        filename: Name of the CSV file (default = 'metrics.csv')
+    """
+
+    #Ensure that metrics dir exist
+    os.makedirs(metrics_path, exist_ok=True)
+
+    csv_file = os.path.join(metrics_path, filename)
+
+    df = pd.DataFrame(results)
+
+    df['time_sec'] = fold_times
+
+    #Add mean and std at the end
+    mean_row = df.mean(numeric_only=True)
+    mean_row.name = 'mean'
+
+    std_row = df.std(numeric_only=True)
+    std_row.name = 'std'
+
+    df_final = pd.concat([df, pd.DataFrame([mean_row, std_row])], axis=0)
+
+    df_final.to_csv(csv_file, index=True)
