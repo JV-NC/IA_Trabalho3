@@ -10,9 +10,8 @@ from utils import load_dataset, evaluate_model
 #TODO: maybe save model?
 #TODO: training slow, verify optimization
 #TODO: print after load dataset
-#TODO: joblib paralelism
+#TODO: SVCLinear with pca_components 3 is as good as SVC 'rbf' with 3 pca_components
 #TODO: time metrics for all models
-#TODO: test other SVC kernels or LinearSVC for parallelism
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'
@@ -28,8 +27,8 @@ imputer_strategy = 'constant'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test):
     """Parallel function executed for each fold."""
-    #svm = SVC(kernel='linear')
-    svm = LinearSVC()
+    svm = SVC(kernel='rbf')
+    #svm = LinearSVC()
     svm.fit(X_train, y_train)
 
     y_pred = svm.predict(X_test)
@@ -41,20 +40,26 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
         average='macro'
     )
 
-    print(f"\n===== FOLD {i+1} =====")
-    for m, v in metrics.items():
-        print(f"{m}: {v:.4f}")
-
-    return metrics
+    return i, metrics #return index for sort
 
 def main():
     folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
 
     #Train and evaluate model
-    results = Parallel(n_jobs=-1, backend="loky")(
+    raw_results = Parallel(n_jobs=-1, backend="loky")(
         delayed(train_one_fold)(i, X_train, X_test, y_train, y_test)
         for i, (X_train, X_test, y_train, y_test) in enumerate(folds)
     )
+
+    raw_results.sort(key=lambda x: x[0])
+
+    results = []
+
+    for i, metrics in raw_results:
+        print(f"\n===== FOLD {i+1} =====")
+        for m, v in metrics.items():
+            print(f"{m}: {v:.4f}")
+        results.append(metrics)
 
     df_results = pd.DataFrame(results)
 
