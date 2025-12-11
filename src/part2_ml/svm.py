@@ -1,14 +1,13 @@
 import pandas as pd
 import numpy as np
 from sklearn.svm import SVC, LinearSVC
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, dump
 import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
 from utils import load_dataset, evaluate_model
 
-#TODO: maybe save model?
 #TODO: training slow, verify optimization
 #TODO: SVCLinear with pca_components = 5 is as good as SVC 'rbf' with 3 pca_components
 
@@ -22,7 +21,8 @@ ignore_columns = []
 encoder = 'onehot'
 imputer_strategy = 'constant'
 
-
+#Dir for saving models
+model_path = 'output/models/svm'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test):
     """Parallel function executed for each fold and measure time."""
@@ -43,9 +43,16 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
 
     elapsed = time.perf_counter() - start
 
+    #Saving model
+    model_filename = os.path.join(model_path,f'svm_fold_{i+1}.pkl')
+
+    dump(svm,model_filename)
+
     return i, metrics, elapsed #return index for sort
 
 def main():
+    os.makedirs(model_path,exist_ok=True)
+
     start_total = time.perf_counter()
 
     folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
