@@ -6,7 +6,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model
+from utils import load_dataset, evaluate_model, save_model
 
 #TODO: training slow, verify optimization
 #TODO: SVCLinear with pca_components = 5 is as good as SVC 'rbf' with 3 pca_components
@@ -44,9 +44,7 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
     elapsed = time.perf_counter() - start
 
     #Saving model
-    model_filename = os.path.join(model_path,f'svm_fold_{i+1}.pkl')
-
-    dump(svm,model_filename)
+    save_model(svm,model_path,f'svm_fold_{i+1}.pkl')
 
     return i, metrics, elapsed #return index for sort
 

@@ -7,6 +7,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 import os
+import pickle
 
 RESET = '\033[0m'
 BOLD = '\033[1m'
@@ -231,3 +232,20 @@ def save_metrics_csv(
     df_final = pd.concat([df, pd.DataFrame([mean_row, std_row])], axis=0)
 
     df_final.to_csv(csv_file, index=True)
+
+def save_model(model, model_path: str, filename: str)->None:
+    """
+    Saves a trained model using pickle.
+
+    Args:
+        model: sklearn trained model.
+        model_path : directory where the model will be saved.
+        filename : file name for the model.
+    """
+
+    os.makedirs(model_path,exist_ok=True)
+
+    full_path = os.path.join(model_path, filename)
+
+    with open(full_path,'wb') as f:
+        pickle.dump(model,f)

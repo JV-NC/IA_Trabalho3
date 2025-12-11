@@ -12,7 +12,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_metrics_csv
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model
 
 #TODO: test all scalers and imputers, test weights of KNN
 #TODO: test diferent values of n_splits and pca_components
@@ -52,8 +52,7 @@ def train_one_fold(i, X_train, X_test, y_train, y_test, best_k):
     elapsed = time.perf_counter() - start
 
     # --- Save model ---
-    model_filename = os.path.join(model_path, f'knn_fold_{i+1}.pkl')
-    dump(knn, model_filename)
+    save_model(knn,model_path,f'knn_fold_{i+1}.pkl')
 
     return i, metrics, elapsed
 
