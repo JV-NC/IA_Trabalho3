@@ -12,11 +12,12 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_metrics_csv, save_model
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary
 
 #TODO: test all scalers and imputers, test weights of KNN
 #TODO: test diferent values of n_splits and pca_components
 #TODO: implement output files or matplotlib models evaluation
+#TODO: verify roc_auc plot, different roc value from evaluate_model
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'
@@ -28,7 +29,7 @@ ignore_columns = []
 encoder = 'onehot'
 imputer_strategy = 'constant'
 
-#Dir for saving models
+#Dir for saving outputs
 model_path = 'output/models/knn'
 plot_path = 'output/plots/knn'
 metrics_path = 'output/metrics/knn'
@@ -51,17 +52,15 @@ def train_one_fold(i, X_train, X_test, y_train, y_test, best_k):
 
     elapsed = time.perf_counter() - start
 
+    y_score = knn.predict_proba(X_test)[:, 1]
+    plot_roc_curve_binary(y_test, y_score, plot_path, f'roc_fold{i+1}.png')
+
     # --- Save model ---
     save_model(knn,model_path,f'knn_fold_{i+1}.pkl')
 
     return i, metrics, elapsed
 
 def main():
-    #Ensure output dirs
-    os.makedirs(model_path,exist_ok=True)
-    os.makedirs(plot_path,exist_ok=True)
-    os.makedirs(metrics_path,exist_ok=True)
-
     start_total = time.perf_counter()
 
     folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
@@ -81,13 +80,12 @@ def main():
     #elbow curve
     plt.figure(figsize=(10, 5))
     plt.plot(k_values, scores)
-    plt.xlabel("K")
-    plt.ylabel("Accuracy (CV)")
-    plt.title("Elbow method - pick best K")
+    plt.xlabel('K')
+    plt.ylabel('Accuracy (CV)')
+    plt.title('Elbow method - pick best K')
     plt.grid()
     plt.tight_layout()
-    plt.savefig(f"{plot_path}/elbow_method.png", dpi=300)
-    plt.close()
+    save_plot(plot_path, 'elbow_curve.png')
 
     best_k = k_values[int(np.argmax(scores))]
     #best_k = 10

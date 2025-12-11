@@ -5,9 +5,11 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, confusion_matrix, ConfusionMatrixDisplay
 import os
 import pickle
+import matplotlib.pyplot as plt
+
 
 RESET = '\033[0m'
 BOLD = '\033[1m'
@@ -236,11 +238,10 @@ def save_metrics_csv(
 def save_model(model, model_path: str, filename: str)->None:
     """
     Saves a trained model using pickle.
-
     Args:
         model: sklearn trained model.
-        model_path : directory where the model will be saved.
-        filename : file name for the model.
+        model_path: directory where the model will be saved.
+        filename: file name for the model.
     """
 
     os.makedirs(model_path,exist_ok=True)
@@ -249,3 +250,39 @@ def save_model(model, model_path: str, filename: str)->None:
 
     with open(full_path,'wb') as f:
         pickle.dump(model,f)
+
+def save_plot(plot_path: str, filename: str = "plot.png"):
+    """
+    Saves the current Matplotlib figure to the specified directory.
+
+    Args:
+        plot_path: directory where the plot will be saved.
+        filename: name of the output image file.
+    """
+    os.makedirs(plot_path, exist_ok=True)
+    full_path = os.path.join(plot_path, filename)
+    plt.savefig(full_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def plot_roc_curve_binary(y_true, y_score, plot_path: str, filename: str = 'roc_curve.png')->None:
+    """
+    Plots and saves a ROC curve for binary classification.
+    Args:
+        y_true: Ground truth labels
+        y_score: Scores/probabilities for class 1 (predict_proba)
+        plot_path: Directory to save plot
+        filename: Output filename
+    """
+    fpr, tpr, _ = roc_curve(y_true,y_score)
+    roc_auc = auc(fpr,tpr)
+
+    plt.figure(figsize=(7, 5))
+    plt.plot(fpr, tpr, lw=2, label=f"AUC = {roc_auc:.4f}")
+    plt.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve (Binary)")
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    
+    save_plot(plot_path, filename)
