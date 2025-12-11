@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Literal
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -7,75 +7,75 @@ from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
-RESET = "\033[0m"
-BOLD = "\033[1m"
+RESET = '\033[0m'
+BOLD = '\033[1m'
 
 # Cores
-COMPONENT = "\033[96m" #CYAN
-TITLE = "\033[95m" #MAGENTA
-PRICE = "\033[92m" #GREEN
-BORDER = "\033[94m" #BLUE
-CHOICE = "\033[97m" #WHITE
+COMPONENT = '\033[96m' #CYAN
+TITLE = '\033[95m' #MAGENTA
+PRICE = '\033[92m' #GREEN
+BORDER = '\033[94m' #BLUE
+CHOICE = '\033[97m' #WHITE
 
 def color(text: str, c: str) -> str:
-    return f"{c}{text}{RESET}"
+    return f'{c}{text}{RESET}'
 
 def print_build(build) -> None:
     """
     Show final build table with colors.
     """
 
-    title_line = "=" * 29
+    title_line = '=' * 29
     print(
-        "\n"
+        '\n'
         + color(title_line, BORDER)
-        + " "
-        + color("FINAL BUILD", TITLE + BOLD)
-        + " "
+        + ' '
+        + color('FINAL BUILD', TITLE + BOLD)
+        + ' '
         + color(title_line, BORDER)
     )
 
     #Header
     header = (
-        f"{color('Component', TITLE):20} | "
-        f"{color('Choice', TITLE):35} | "
-        f"{color('Price (R$)', TITLE)}"
+        f'{color('Component', TITLE):20} | '
+        f'{color('Choice', TITLE):35} | '
+        f'{color('Price (R$)', TITLE)}'
     )
     print(header)
 
-    print(color("-" * 71, BORDER))
+    print(color('-' * 71, BORDER))
 
     # Table body
     total = 0
     for comp, (name, price) in build.items():
         total += price
         print(
-            f"{color(comp, COMPONENT):20} | "
-            f"{color(name, CHOICE):35} | "
-            f"{color(f'{price:>8}', PRICE)}"
+            f'{color(comp, COMPONENT):20} | '
+            f'{color(name, CHOICE):35} | '
+            f'{color(f'{price:>8}', PRICE)}'
         )
 
-    print(color("-" * 71, BORDER))
+    print(color('-' * 71, BORDER))
 
     # Total
     print(
-        f"{color('TOTAL', TITLE + BOLD):20} | "
-        f"{'':35} | "
-        f"{color(f'{total:>8}', PRICE + BOLD)}"
+        f'{color('TOTAL', TITLE + BOLD):20} | '
+        f'{'':35} | '
+        f'{color(f'{total:>8}', PRICE + BOLD)}'
     )
 
-    print(color("=" * 71, BORDER) + "\n")
+    print(color('=' * 71, BORDER) + '\n')
 
 def load_dataset(
         csv_path: str,
         target_column: str,
         n_splits: int=5,
-        normalize: str='std',
+        normalize: Literal['std','minmax','abs'] = 'std',
         apply_pca: bool=False,
         pca_components: int=2,
         ignore_columns: Optional[List[str]]=None,
-        encoding: str='onehot',
-        imputer_strategy: str='mean'
+        encoding: Literal['onehot','label'] = 'onehot',
+        imputer_strategy: Literal['mean','median','most_frequent','constant'] = 'mean'
         ) ->List[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     """
     Load a CSV dataset and apply preprocessing:
@@ -112,7 +112,7 @@ def load_dataset(
     elif encoding == 'label' and categorical_columns:
         le = LabelEncoder()
         for col in categorical_columns:
-            X[col] = le.fit_transform[col]
+            X[col] = le.fit_transform(X[col])
 
     #handle missing values (imputation)
     imputer_strategy = imputer_strategy if imputer_strategy in ['mean','median','most_frequent','constant'] else 'mean'
@@ -151,7 +151,7 @@ def load_dataset(
 def evaluate_model(y_true: np.ndarray,
                    y_pred: np.ndarray,
                    metrics: Optional[List[str]] = None,
-                   average: str = 'macro'
+                   average: Literal['micro', 'macro', 'samples', 'weighted', 'binary'] = 'macro'
                    )-> Dict[str, float]:
     """
     Evaluate a model using selected metrics.

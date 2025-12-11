@@ -1,58 +1,94 @@
+import pandas as pd
 import numpy as np
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
+from sklearn.svm import SVC, LinearSVC
+from joblib import Parallel, delayed, dump
+import time
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
+from utils import load_dataset, evaluate_model
 
-# Carregar o conjunto de dados Iris
-data = load_iris()
-X = data.data
-y = data.target
+#TODO: training slow, verify optimization
+#TODO: SVCLinear with pca_components = 5 is as good as SVC 'rbf' with 3 pca_components
 
-# Dividir os dados em conjuntos de treinamento e teste
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3
-                                                    , random_state=42)
+csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
+target_column = 'satisfaction'
+n_splits = 5
+normalize = 'std'
+pca = True
+pca_components = 5
+ignore_columns = []
+encoder = 'onehot'
+imputer_strategy = 'constant'
 
-# Padronizar os dados (muito importante para PCA e SVM)
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+#Dir for saving models
+model_path = 'output/models/svm'
 
-# Aplicar PCA para reduzir a dimensionalidade
-pca = PCA(n_components=2)  # Reduzindo para 2 componentes principais
-X_train_pca = pca.fit_transform(X_train)
-X_test_pca = pca.transform(X_test)
+def train_one_fold(i, X_train, X_test, y_train, y_test):
+    """Parallel function executed for each fold and measure time."""
+    start = time.perf_counter()
 
-# Treinar o modelo SVM
-svm = SVC(kernel='linear')  # Você pode escolher outros kernels como 'rbf'
-svm.fit(X_train_pca, y_train)
+    svm = SVC(kernel='rbf')
+    #svm = LinearSVC()
+    svm.fit(X_train, y_train)
 
-# Fazer previsões no conjunto de teste
-y_pred = svm.predict(X_test_pca)
+    y_pred = svm.predict(X_test)
 
-# Avaliar a precisão do modelo
-accuracy = accuracy_score(y_test, y_pred)
-print(f'Acurácia: {accuracy:.2f}')
+    metrics = evaluate_model(
+        y_test,
+        y_pred,
+        metrics=['accuracy', 'precision', 'recall', 'f1', 'roc_auc'],
+        average='macro'
+    )
 
-import pickle
-# Save the model to a file
-with open('svm.model', 'wb') as file:
-  pickle.dump(svm, file)
+    elapsed = time.perf_counter() - start
 
-# Load the model from the file
-with open('svm.model', 'rb') as file:
-  svm = pickle.load(file)
-  
-  
-# treinar o model com cross-validation
-from sklearn.model_selection import cross_val_score
-svm_cv = SVC(kernel='linear')
-scores = cross_val_score(svm_cv, X_train_pca, y_train, cv=5)
-print(f'Cross-validation scores: {scores}')
-print(f'Mean cross-validation score: {np.mean(scores):.2f}')
-# fazer as predicoes com o modelo treinado com cross-validation
-y_pred_cv = svm_cv.fit(X_train_pca, y_train).predict(X_test_pca)
-accuracy_cv = accuracy_score(y_test, y_pred_cv)
-print(f'Acurácia com cross-validation: {accuracy_cv:.2f}')
+    #Saving model
+    model_filename = os.path.join(model_path,f'svm_fold_{i+1}.pkl')
+
+    dump(svm,model_filename)
+
+    return i, metrics, elapsed #return index for sort
+
+def main():
+    os.makedirs(model_path,exist_ok=True)
+
+    start_total = time.perf_counter()
+
+    folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
+
+    #Train and evaluate model
+    raw_results = Parallel(n_jobs=-1, backend='loky')(
+        delayed(train_one_fold)(i, X_train, X_test, y_train, y_test)
+        for i, (X_train, X_test, y_train, y_test) in enumerate(folds)
+    )
+
+    raw_results.sort(key=lambda x: x[0])
+
+    results = []
+    fold_times = []
+
+    for i, metrics, elapsed in raw_results:
+        print(f'\n===== FOLD {i+1} =====')
+        for m, v in metrics.items():
+            print(f'{m}: {v:.4f}')
+        #print(f'Fold {i+1} time: {elapsed:.3f} s')
+
+        results.append(metrics)
+        fold_times.append(elapsed)
+
+    df_results = pd.DataFrame(results)
+
+    elapsed_total = time.perf_counter() - start_total
+
+    print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
+    print(df_results.mean())
+
+    print('\n===== Times =====')
+    for i, t in enumerate(fold_times):
+        print(f'Fold {i+1}: {t:.3f} s')
+
+    print(f'\nTotal execution time: {elapsed_total:.3f} s\n')
+
+if __name__ == '__main__':
+    main()
