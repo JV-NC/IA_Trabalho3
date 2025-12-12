@@ -1,15 +1,12 @@
 import pandas as pd
 import numpy as np
-from sklearn.svm import SVC, LinearSVC
+from sklearn.tree import DecisionTreeClassifier
 from joblib import Parallel, delayed, dump
 import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_model
-
-#TODO: training slow, verify optimization
-#TODO: SVCLinear with pca_components = 5 is as good as SVC 'rbf' with 3 pca_components
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary, plot_confusion_matrix
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'
@@ -22,17 +19,18 @@ encoder = 'onehot'
 imputer_strategy = 'constant'
 
 #Dir for saving outputs
-model_path = 'output/models/svm'
+model_path = 'output/models/dt'
+plot_path = 'output/plots/dt'
+metrics_path = 'output/metrics/dt'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test):
     """Parallel function executed for each fold, measure time and save model."""
     start = time.perf_counter()
 
-    svm = SVC(kernel='rbf')
-    #svm = LinearSVC()
-    svm.fit(X_train, y_train)
+    dt = DecisionTreeClassifier()
+    dt.fit(X_train, y_train)
 
-    y_pred = svm.predict(X_test)
+    y_pred = dt.predict(X_test)
 
     metrics = evaluate_model(
         y_test,
@@ -43,8 +41,14 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
 
     elapsed = time.perf_counter() - start
 
+    #plot metrics
+    y_score = dt.predict_proba(X_test)[:, 1]
+    plot_roc_curve_binary(y_test, y_score, plot_path, f'roc_fold{i+1}.png')
+    plot_confusion_matrix(y_test,y_pred,['dissatisfied', 'satisfied'],plot_path,f'cm_fold{i+1}.png')
+
+
     #Saving model
-    save_model(svm,model_path,f'svm_fold_{i+1}.pkl')
+    save_model(dt,model_path,f'dt_fold_{i+1}.pkl')
 
     return i, metrics, elapsed #return index for sort
 
