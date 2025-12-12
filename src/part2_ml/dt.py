@@ -83,6 +83,8 @@ def main():
 
     elapsed_total = time.perf_counter() - start_total
 
+    save_metrics_csv(results,fold_times,metrics_path)
+
     print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
     print(df_results.mean())
 

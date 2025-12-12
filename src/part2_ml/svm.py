@@ -6,7 +6,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_model
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary, plot_confusion_matrix
 
 #TODO: training slow, verify optimization
 #TODO: SVCLinear with pca_components = 5 is as good as SVC 'rbf' with 3 pca_components
@@ -23,6 +23,8 @@ imputer_strategy = 'constant'
 
 #Dir for saving outputs
 model_path = 'output/models/svm'
+plot_path = 'output/plots/svm'
+metrics_path = 'output/metrics/svm'
 
 def train_one_fold(i, X_train, X_test, y_train, y_test):
     """Parallel function executed for each fold, measure time and save model."""
@@ -42,6 +44,11 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
     )
 
     elapsed = time.perf_counter() - start
+
+    #plot metrics
+    y_score = svm.decision_function(X_test)
+    plot_roc_curve_binary(y_test, y_score, plot_path, f'roc_fold{i+1}.png')
+    plot_confusion_matrix(y_test,y_pred,['dissatisfied', 'satisfied'],plot_path,f'cm_fold{i+1}.png')
 
     #Saving model
     save_model(svm,model_path,f'svm_fold_{i+1}.pkl')
@@ -78,6 +85,8 @@ def main():
     df_results = pd.DataFrame(results)
 
     elapsed_total = time.perf_counter() - start_total
+
+    save_metrics_csv(results,fold_times,metrics_path)
 
     print(f'\n\n===== Final Metrics (Mean on {n_splits} folds) =====')
     print(df_results.mean())
