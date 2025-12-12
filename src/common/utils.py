@@ -5,7 +5,11 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.decomposition import PCA
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, roc_curve, auc, confusion_matrix, ConfusionMatrixDisplay
+import os
+import pickle
+import matplotlib.pyplot as plt
+
 
 RESET = '\033[0m'
 BOLD = '\033[1m'
@@ -195,3 +199,114 @@ def evaluate_model(y_true: np.ndarray,
             performance['roc_auc'] = np.nan  # if its not possible to calculate
     
     return performance
+
+def save_metrics_csv(
+        results: List[Dict[str,float]],
+        fold_times: List[float],
+        metrics_path: str,
+        filename: str = 'metrics.csv'
+)->None:
+    """
+    Saves the metrics of a fold into a CSV file.
+    Args:
+        results: List of dicts (each fold's metrics)
+        fold_times: List of float (seconds spent per fold)
+        metrics_path: Directory where the CSV will be saved
+        filename: Name of the CSV file (default = 'metrics.csv')
+    """
+
+    #Ensure that metrics dir exist
+    os.makedirs(metrics_path, exist_ok=True)
+
+    csv_file = os.path.join(metrics_path, filename)
+
+    df = pd.DataFrame(results)
+
+    df['time_sec'] = fold_times
+
+    #Add mean and std at the end
+    mean_row = df.mean(numeric_only=True)
+    mean_row.name = 'mean'
+
+    std_row = df.std(numeric_only=True)
+    std_row.name = 'std'
+
+    df_final = pd.concat([df, pd.DataFrame([mean_row, std_row])], axis=0)
+
+    df_final.to_csv(csv_file, index=True)
+
+def save_model(model, model_path: str, filename: str)->None:
+    """
+    Saves a trained model using pickle.
+    Args:
+        model: sklearn trained model.
+        model_path: directory where the model will be saved.
+        filename: file name for the model.
+    """
+
+    os.makedirs(model_path,exist_ok=True)
+
+    full_path = os.path.join(model_path, filename)
+
+    with open(full_path,'wb') as f:
+        pickle.dump(model,f)
+
+def save_plot(plot_path: str, filename: str = "plot.png"):
+    """
+    Saves the current Matplotlib figure to the specified directory.
+
+    Args:
+        plot_path: directory where the plot will be saved.
+        filename: name of the output image file.
+    """
+    os.makedirs(plot_path, exist_ok=True)
+    full_path = os.path.join(plot_path, filename)
+    plt.savefig(full_path, dpi=300, bbox_inches='tight')
+    plt.close()
+
+def plot_roc_curve_binary(y_true, y_score, plot_path: str, filename: str = 'roc_curve.png')->None:
+    """
+    Plots and saves a ROC curve for binary classification.
+    Args:
+        y_true: Ground truth labels
+        y_score: Scores/probabilities for class 1 (predict_proba)
+        plot_path: Directory to save plot
+        filename: Output filename
+    """
+    fpr, tpr, _ = roc_curve(y_true,y_score)
+    roc_auc = auc(fpr,tpr)
+
+    plt.figure(figsize=(7, 5))
+    plt.plot(fpr, tpr, lw=2, label=f"AUC = {roc_auc:.4f}")
+    plt.plot([0, 1], [0, 1], linestyle="--", lw=1, color="gray")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve (Binary)")
+    plt.legend(loc="lower right")
+    plt.grid(True)
+
+    save_plot(plot_path, filename)
+
+def plot_confusion_matrix(y_true, y_pred, classes: list, plot_path: str, filename: str = "confusion_matrix.png", normalize: bool = True):
+    """
+    Saves a confusion matrix plot to disk.
+
+    Args:
+        y_true: Ground truth labels
+        y_pred: Predicted labels
+        classes (list): List of class names in order
+        plot_path (str): Directory to save plot
+        filename (str): Filename of saved image
+        normalize (bool): If True, normalizes confusion matrix percentage
+    """
+    cm = confusion_matrix(y_true, y_pred, normalize='true' if normalize else None)
+
+    plt.figure(figsize=(6, 5))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+    disp.plot(cmap='Blues', values_format='.2f' if normalize else 'd')
+    plt.title('Confusion Matrix' + (' (Normalized)' if normalize else ''))
+
+    # remove redundant figure opening from sklearn
+    plt.tight_layout()
+
+    save_plot(plot_path, filename)

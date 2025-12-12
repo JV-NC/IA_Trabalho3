@@ -1,3 +1,5 @@
 src/common/__pycache__
 data/kaggle_dataset/*.csv
 output/models/**/*.pkl
+output/metrics/**/*.csv
+output/plots/**/*.png
