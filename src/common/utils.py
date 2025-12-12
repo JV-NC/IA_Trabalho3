@@ -284,5 +284,29 @@ def plot_roc_curve_binary(y_true, y_score, plot_path: str, filename: str = 'roc_
     plt.title("ROC Curve (Binary)")
     plt.legend(loc="lower right")
     plt.grid(True)
-    
+
+    save_plot(plot_path, filename)
+
+def plot_confusion_matrix(y_true, y_pred, classes: list, plot_path: str, filename: str = "confusion_matrix.png", normalize: bool = True):
+    """
+    Saves a confusion matrix plot to disk.
+
+    Args:
+        y_true: Ground truth labels
+        y_pred: Predicted labels
+        classes (list): List of class names in order
+        plot_path (str): Directory to save plot
+        filename (str): Filename of saved image
+        normalize (bool): If True, normalizes confusion matrix percentage
+    """
+    cm = confusion_matrix(y_true, y_pred, normalize='true' if normalize else None)
+
+    plt.figure(figsize=(6, 5))
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=classes)
+    disp.plot(cmap='Blues', values_format='.2f' if normalize else 'd')
+    plt.title('Confusion Matrix' + (' (Normalized)' if normalize else ''))
+
+    # remove redundant figure opening from sklearn
+    plt.tight_layout()
+
     save_plot(plot_path, filename)

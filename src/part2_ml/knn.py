@@ -12,7 +12,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary, plot_confusion_matrix
 
 #TODO: test all scalers and imputers, test weights of KNN
 #TODO: test diferent values of n_splits and pca_components
@@ -52,8 +52,10 @@ def train_one_fold(i, X_train, X_test, y_train, y_test, best_k):
 
     elapsed = time.perf_counter() - start
 
+    #plot metrics
     y_score = knn.predict_proba(X_test)[:, 1]
     plot_roc_curve_binary(y_test, y_score, plot_path, f'roc_fold{i+1}.png')
+    plot_confusion_matrix(y_test,y_pred,['dissatisfied', 'satisfied'],plot_path,f'cm_fold{i+1}.png')
 
     # --- Save model ---
     save_model(knn,model_path,f'knn_fold_{i+1}.pkl')
