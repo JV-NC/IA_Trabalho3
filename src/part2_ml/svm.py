@@ -56,8 +56,6 @@ def train_one_fold(i, X_train, X_test, y_train, y_test):
     return i, metrics, elapsed #return index for sort
 
 def main():
-    os.makedirs(model_path,exist_ok=True)
-
     start_total = time.perf_counter()
 
     folds = load_dataset(csv_path,target_column,n_splits,normalize,pca,pca_components,ignore_columns,encoder,imputer_strategy)
