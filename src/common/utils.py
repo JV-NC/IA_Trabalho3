@@ -41,9 +41,9 @@ def print_build(build) -> None:
 
     #Header
     header = (
-        f'{color('Component', TITLE):20} | '
-        f'{color('Choice', TITLE):35} | '
-        f'{color('Price (R$)', TITLE)}'
+        f'{color("Component", TITLE):20} | '
+        f'{color("Choice", TITLE):35} | '
+        f'{color("Price (R$)", TITLE)}'
     )
     print(header)
 
@@ -56,16 +56,16 @@ def print_build(build) -> None:
         print(
             f'{color(comp, COMPONENT):20} | '
             f'{color(name, CHOICE):35} | '
-            f'{color(f'{price:>8}', PRICE)}'
+            f'{color(f"{price:>8}", PRICE)}'
         )
 
     print(color('-' * 71, BORDER))
 
     # Total
     print(
-        f'{color('TOTAL', TITLE + BOLD):20} | '
-        f'{'':35} | '
-        f'{color(f'{total:>8}', PRICE + BOLD)}'
+        f'{color("TOTAL", TITLE + BOLD):20} | '
+        f'{"":35} | '
+        f'{color(f"{total:>8}", PRICE + BOLD)}'
     )
 
     print(color('=' * 71, BORDER) + '\n')
