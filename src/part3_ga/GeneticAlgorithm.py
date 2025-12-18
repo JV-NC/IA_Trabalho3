@@ -1,8 +1,11 @@
 import random
+import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, evaluate_individual, generate_random_items
+from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot
+
+plot_path = 'output/plots/ga'
 
 SEED = 42
 random.seed(SEED)
@@ -77,6 +80,10 @@ class GA:
         self.mutate, self.crossover = mutate, crossover
         self.max_iters = max_iters
 
+        #history for evo plot
+        self.history_best: list[float] = []
+        self.history_avg: list[float] = []
+
     def select(self, k=2):
         cand = random.sample(self.pop, k)
         cand.sort(key=self.fitness_fn, reverse=True)
@@ -99,24 +106,42 @@ class GA:
     def run(self):
         best = max(self.pop, key=self.fitness_fn)
         for _ in range(self.max_iters):
+            fitness_values = [self.fitness_fn(ind) for ind in self.pop]
+
+            #save best and avg 's gen in history
+            gen_best = max(fitness_values)
+            gen_avg = sum(fitness_values) / len(fitness_values)
+            self.history_best.append(gen_best)
+            self.history_avg.append(gen_avg)
+
             self.step()
             cand = max(self.pop, key=self.fitness_fn)
             if self.fitness_fn(cand) > self.fitness_fn(best):
                 best = cand
         return best, self.fitness_fn(best)
-    
-ga = GA(
-    pop_size=50,
-    cx_rate=0.8,
-    mut_rate=0.2,
-    fitness_fn=fitness,
-    create_ind=lambda: create_individual(len(items)),
-    mutate=mutate,
-    crossover=ox_crossover,
-    max_iters=300,
-)
+
+def plot_history(history_best: list[float], history_avg: list[float], filename: str='fitness_evo_gen.png')->None:
+    plt.figure()
+    plt.plot(history_best, label='Best fitness')
+    plt.plot(history_avg, label='Average fitness')
+    plt.xlabel('Generation')
+    plt.ylabel('Fitness (fill ratio)')
+    plt.title('GA – Fitness evolution per generation')
+    plt.legend()
+    plt.grid(True)
+    save_plot(plot_path, filename)
 
 def main():
+    ga = GA(
+        pop_size=50,
+        cx_rate=0.8,
+        mut_rate=0.2,
+        fitness_fn=fitness,
+        create_ind=lambda: create_individual(len(items)),
+        mutate=mutate,
+        crossover=ox_crossover,
+        max_iters=300,
+    )
     # for i, item in enumerate(items):
     #     print(f'item {i}: w = {item.w}, h = {item.h}, d = {item.d}')
     total_item_volume = sum([item.volume() for item in items])
@@ -124,6 +149,8 @@ def main():
     print(f'total item volume = {total_item_volume}\nbin volume = {bin_volume}\nitem/bin rate = {total_item_volume/bin_volume:.4f}')
     best_ind, best_fit = ga.run()
     print(f'best fitness = {best_fit:.4f}')
+
+    plot_history(ga.history_best,ga.history_avg)
 
 if __name__ == '__main__':
     main()
