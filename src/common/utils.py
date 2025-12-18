@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Tuple, Literal
+from typing import Optional, Dict, List, Tuple, Literal, Self
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import os
 import pickle
 import matplotlib.pyplot as plt
+import random
 
 
 RESET = '\033[0m'
@@ -310,3 +311,164 @@ def plot_confusion_matrix(y_true, y_pred, classes: list, plot_path: str, filenam
     plt.tight_layout()
 
     save_plot(plot_path, filename)
+
+#part 3 and 4
+class Item:
+    def __init__(self, w: int, h: int, d: int, x: int=0, y: int=0, z: int=0)->None:
+        self.w = w
+        self.h = h
+        self.d = d
+        self.x = x
+        self.y = y
+        self.z = z
+    
+    def volume(self)->int:
+        return self.w * self.h * self.d
+    
+    def rotated(self, r: Literal[0,1,2,3,4,5] = 0)->Self:
+        """
+        Returns a new Item instance with r rotation applied.
+        r = [0,1,2,3,4,5]
+        """
+
+        w, h, d = self.w, self.h, self.d
+
+        if r == 0:
+            nw, nh, nd = w, h, d
+        elif r == 1:
+            nw, nh, nd = w, d, h
+        elif r == 2:
+            nw, nh, nd = h, w, d
+        elif r == 3:
+            nw, nh, nd = h, d, w
+        elif r == 4:
+            nw, nh, nd = d, w, h
+        elif r == 5:
+            nw, nh, nd = d, h, w
+        else:
+            raise ValueError("Invalid Rotation")
+    
+        return Item(nw, nh, nd, self.x, self.y, self.z)
+
+    def intersects(self, other: Self)->bool:
+        """check if itself intersects with another Item"""
+        return not (self.x + self.w <= other.x or other.x + other.w <= self.x or self.y + self.d <= other.y or other.y + other.d <= self.y or self.z + self.h <= other.z or other.z + other.h <= self.z)
+    
+    def fits_in_bin(self, bin_w: int, bin_h: int, bin_d: int)->bool:
+        """check if the Item fits in bin"""
+        return (self.x + self.w <= bin_w and self.y + self.d <= bin_d and self.z + self.h <= bin_h)
+
+class Bin:
+    def __init__(self, w: int, h: int, d: int)->None:
+        self.w = w
+        self.h = h
+        self.d = d
+
+        self.items: List[Item] = []
+        self.candidate_points: List[Tuple[int, int, int]] = [(0, 0, 0)]
+    
+    def can_place(self, item: Item)->bool:
+        """Verify if a certain Item can be placed in the bin"""
+        if not item.fits_in_bin(self.w, self.h, self.d):
+            return False
+        
+        for placed in self.items:
+            if item.intersects(placed):
+                return False
+        
+        return True
+    
+    def place_item(self, item: Item) -> bool:
+        """Try place item with candidate points on BLF"""
+        for (x, y, z) in self.candidate_points:
+            item.x, item.y, item.z = x, y, z
+
+            if self.can_place(item):
+                self.items.append(item)
+
+                # new candidate points on BLF (Bottom Left Front)
+                self.candidate_points.extend([
+                    (x + item.w, y, z),
+                    (x, y + item.d, z),
+                    (x, y, z + item.h)
+                ])
+
+                return True
+
+        return False
+    
+    def try_place_item_with_rotation(self, item: Item, rotation: int) -> bool:
+        """Apply rotation on item and try placing it in the bin """
+        rotated_item = item.rotated(rotation)
+        return self.place_item(rotated_item)
+
+    def used_volume(self) -> int:
+        return sum(item.volume() for item in self.items)
+
+    def fill_ratio(self) -> float:
+        return self.used_volume() / (self.w * self.h * self.d)
+
+    def max_height_used(self) -> int:
+        if not self.items:
+            return 0
+        return max(item.z + item.h for item in self.items)
+    
+def generate_random_items(
+        n: int,
+        min_size: int,
+        max_size: int,
+        seed: Optional[int] = None,
+)-> List[Item]:
+    """
+    Generate a List of random Item with size n, and dimensions of Item limited with min_size and max_size.
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    items: List[Item] = []
+
+    for _ in range(n):
+        shape = random.choice(['cube', 'bar', 'plate', 'random'])
+
+        match shape:
+            case 'cube':
+                a = random.randint(min_size, max_size)
+                w, h, d = a, a, a
+            case 'bar':
+                a = random.randint(min_size, max_size)
+                b = random.randint(min_size, max_size // 2)
+                w, h, d = a, b, b
+            case 'plate':
+                a = random.randint(min_size, max_size)
+                b = random.randint(min_size, max_size // 3)
+                w, h, d = a, a, b
+            case _:
+                w = random.randint(min_size, max_size)
+                h = random.randint(min_size, max_size)
+                d = random.randint(min_size, max_size)
+            
+        items.append(Item(w,h,d))
+    
+    return items
+
+def evaluate_individual(
+        individual: List[Tuple[int, int]],
+        items: List[Item],
+        bin: Bin
+)->float:
+
+    rejected = 0
+
+    for item_id, rotation in individual:
+        item = items[item_id]
+
+        if not bin.try_place_item_with_rotation(item, rotation):
+            rejected += 1
+
+    # main metric
+    fill = bin.fill_ratio()
+
+    # penalização leve por rejeição (opcional)
+    penalty = 0.01 * rejected
+
+    return max(0.0, fill - penalty)
