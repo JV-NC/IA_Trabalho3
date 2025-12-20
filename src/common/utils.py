@@ -9,6 +9,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import os
 import pickle
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import random
 
 
@@ -472,3 +473,90 @@ def evaluate_individual(
     penalty = 0.01 * rejected
 
     return max(0.0, fill - penalty)
+
+def build_bin_from_individual(
+        individual: list[tuple[int, int]],
+        items: list[Item],
+        bin_dims: tuple[int, int, int]
+)->Bin:
+    """Build a Bin class using a individual tuple"""
+    bin_w, bin_h, bin_d = bin_dims
+    bin = Bin(bin_w, bin_h, bin_d)
+
+    for item_id, rotation in individual:
+        item = items[item_id]
+        bin.try_place_item_with_rotation(item, rotation)
+
+    return bin
+
+def draw_cuboid(ax, x, y, z, w, h, d, color, alpha=0.6)->None:
+    """Draw cuboid for items on bin"""
+    vertices = [
+        [(x, y, z), (x+w, y, z), (x+w, y+d, z), (x, y+d, z)],
+        [(x, y, z+h), (x+w, y, z+h), (x+w, y+d, z+h), (x, y+d, z+h)],
+        [(x, y, z), (x+w, y, z), (x+w, y, z+h), (x, y, z+h)],
+        [(x, y+d, z), (x+w, y+d, z), (x+w, y+d, z+h), (x, y+d, z+h)],
+        [(x, y, z), (x, y+d, z), (x, y+d, z+h), (x, y, z+h)],
+        [(x+w, y, z), (x+w, y+d, z), (x+w, y+d, z+h), (x+w, y, z+h)],
+    ]
+
+    ax.add_collection3d(
+        Poly3DCollection(vertices, facecolors=color, linewidths=0.5, edgecolors='k', alpha=alpha)
+    )
+
+def draw_bin_wireframe(ax, w, h, d)->None:
+    """Draw bin wireframe"""
+    edges = [
+        [(0,0,0), (w,0,0)], [(0,d,0), (w,d,0)],
+        [(0,0,h), (w,0,h)], [(0,d,h), (w,d,h)],
+
+        [(0,0,0), (0,d,0)], [(w,0,0), (w,d,0)],
+        [(0,0,h), (0,d,h)], [(w,0,h), (w,d,h)],
+
+        [(0,0,0), (0,0,h)], [(w,0,0), (w,0,h)],
+        [(0,d,0), (0,d,h)], [(w,d,0), (w,d,h)],
+    ]
+
+    for edge in edges:
+        xs, ys, zs = zip(*edge)
+        ax.plot(xs, ys, zs, color='black', linewidth=1)
+
+def plot_bin_3d(bin: Bin, plot_path: str, filename: str='bin_3d.png')->None:
+    """Use matplotlib and mpl_toolkits for a 3d plot of bin with items"""
+    bin_w = bin.w
+    bin_h = bin.h
+    bin_d = bin.d
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Draw items
+    for item in bin.items:
+        color = (
+            random.random(),
+            random.random(),
+            random.random()
+        )
+        draw_cuboid(
+            ax,
+            item.x, item.y, item.z,
+            item.w, item.h, item.d,
+            color=color,
+            alpha=0.6
+        )
+
+    # Draw bin wireframe
+    draw_bin_wireframe(ax, bin_w, bin_h, bin_d)
+
+    ax.set_xlim(0, bin_w)
+    ax.set_ylim(0, bin_d)
+    ax.set_zlim(0, bin_h)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    ax.set_title('3D Bin Packing – Final Solution')
+
+    save_plot(plot_path, filename)
+    plt.show()
