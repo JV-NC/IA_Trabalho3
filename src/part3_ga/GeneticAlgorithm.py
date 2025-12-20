@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d
+from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions
 
 #TODO: implement others fitness functions (height, items not used, etc)
 #TODO: implement sensibility plot, with parameters changes.
@@ -157,6 +157,7 @@ def main():
     plot_history(ga.history_best,ga.history_avg)
 
     final_bin = build_bin_from_individual(best_ind, items, (BIN_W, BIN_H, BIN_D))
+    assert_no_collisions(final_bin)
     plot_bin_3d(final_bin,plot_path,'bin_final_3d.png')
 
 if __name__ == '__main__':

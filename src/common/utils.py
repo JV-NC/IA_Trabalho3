@@ -349,7 +349,7 @@ class Item:
         else:
             raise ValueError("Invalid Rotation")
     
-        return Item(nw, nh, nd, self.x, self.y, self.z)
+        return Item(nw, nh, nd, 0, 0, 0)
 
     def intersects(self, other: Self)->bool:
         """check if itself intersects with another Item"""
@@ -358,6 +358,9 @@ class Item:
     def fits_in_bin(self, bin_w: int, bin_h: int, bin_d: int)->bool:
         """check if the Item fits in bin"""
         return (self.x + self.w <= bin_w and self.y + self.d <= bin_d and self.z + self.h <= bin_h)
+    
+    def copy(self) ->Self:
+        return Item(self.w, self.h, self.d)
 
 class Bin:
     def __init__(self, w: int, h: int, d: int)->None:
@@ -461,7 +464,7 @@ def evaluate_individual(
     rejected = 0
 
     for item_id, rotation in individual:
-        item = items[item_id]
+        item = items[item_id].copy()
 
         if not bin.try_place_item_with_rotation(item, rotation):
             rejected += 1
@@ -480,11 +483,10 @@ def build_bin_from_individual(
         bin_dims: tuple[int, int, int]
 )->Bin:
     """Build a Bin class using a individual tuple"""
-    bin_w, bin_h, bin_d = bin_dims
-    bin = Bin(bin_w, bin_h, bin_d)
+    bin = Bin(*bin_dims)
 
     for item_id, rotation in individual:
-        item = items[item_id]
+        item = items[item_id].copy()
         bin.try_place_item_with_rotation(item, rotation)
 
     return bin
@@ -559,4 +561,9 @@ def plot_bin_3d(bin: Bin, plot_path: str, filename: str='bin_3d.png')->None:
     ax.set_title('3D Bin Packing – Final Solution')
 
     save_plot(plot_path, filename)
-    plt.show()
+
+def assert_no_collisions(bin: Bin):
+    for i in range(len(bin.items)):
+        for j in range(i+1, len(bin.items)):
+            if bin.items[i].intersects(bin.items[j]):
+                raise RuntimeError("COLISÃO DETECTADA!")
