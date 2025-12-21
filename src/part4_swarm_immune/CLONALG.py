@@ -31,9 +31,6 @@ PARAM_GRID = list(product(
     MAX_ITERS
 ))
 
-#TODO: make commons for GA, ACO and CLONALG (fitness, create, mutate, etc)
-#TODO: clean create lambda
-
 create = lambda: create_individual(len(items))
 
 fitness_fn = lambda ind: fitness(ind, items, (BIN_W, BIN_H, BIN_D))

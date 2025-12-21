@@ -34,8 +34,6 @@ PARAM_GRID = list(product(
     BETAS
 ))
 
-#TODO: check SEED and items generation, maybe create json or csv for items and run reading it
-
 class AntColony:
     def __init__(
         self,
