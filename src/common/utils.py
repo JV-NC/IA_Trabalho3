@@ -1,4 +1,4 @@
-from typing import Optional, Dict, List, Tuple, Literal
+from typing import Optional, Dict, List, Tuple, Literal, Self
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
@@ -9,6 +9,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import os
 import pickle
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+import random
 
 
 RESET = '\033[0m'
@@ -310,3 +312,294 @@ def plot_confusion_matrix(y_true, y_pred, classes: list, plot_path: str, filenam
     plt.tight_layout()
 
     save_plot(plot_path, filename)
+
+#part 3 and 4
+class Item:
+    def __init__(self, w: int, h: int, d: int, x: int=0, y: int=0, z: int=0)->None:
+        self.w = w
+        self.h = h
+        self.d = d
+        self.x = x
+        self.y = y
+        self.z = z
+    
+    def volume(self)->int:
+        return self.w * self.h * self.d
+    
+    def rotated(self, r: Literal[0,1,2,3,4,5] = 0)->Self:
+        """
+        Returns a new Item instance with r rotation applied.
+        r = [0,1,2,3,4,5]
+        """
+
+        w, h, d = self.w, self.h, self.d
+
+        if r == 0:
+            nw, nh, nd = w, h, d
+        elif r == 1:
+            nw, nh, nd = w, d, h
+        elif r == 2:
+            nw, nh, nd = h, w, d
+        elif r == 3:
+            nw, nh, nd = h, d, w
+        elif r == 4:
+            nw, nh, nd = d, w, h
+        elif r == 5:
+            nw, nh, nd = d, h, w
+        else:
+            raise ValueError("Invalid Rotation")
+    
+        return Item(nw, nh, nd, 0, 0, 0)
+
+    def intersects(self, other: Self)->bool:
+        """check if itself intersects with another Item"""
+        return not (self.x + self.w <= other.x or other.x + other.w <= self.x or self.y + self.d <= other.y or other.y + other.d <= self.y or self.z + self.h <= other.z or other.z + other.h <= self.z)
+    
+    def fits_in_bin(self, bin_w: int, bin_h: int, bin_d: int)->bool:
+        """check if the Item fits in bin"""
+        return (self.x + self.w <= bin_w and self.y + self.d <= bin_d and self.z + self.h <= bin_h)
+    
+    def copy(self) ->Self:
+        return Item(self.w, self.h, self.d)
+
+class Bin:
+    def __init__(self, w: int, h: int, d: int)->None:
+        self.w = w
+        self.h = h
+        self.d = d
+
+        self.items: List[Item] = []
+        self.candidate_points: List[Tuple[int, int, int]] = [(0, 0, 0)]
+    
+    def can_place(self, item: Item)->bool:
+        """Verify if a certain Item can be placed in the bin"""
+        if not item.fits_in_bin(self.w, self.h, self.d):
+            return False
+        
+        for placed in self.items:
+            if item.intersects(placed):
+                return False
+        
+        return True
+    
+    def place_item(self, item: Item) -> bool:
+        """Try place item with candidate points on BLF"""
+        for (x, y, z) in self.candidate_points:
+            item.x, item.y, item.z = x, y, z
+
+            if self.can_place(item):
+                self.items.append(item)
+
+                # new candidate points on BLF (Bottom Left Front)
+                self.candidate_points.extend([
+                    (x + item.w, y, z),
+                    (x, y + item.d, z),
+                    (x, y, z + item.h)
+                ])
+
+                return True
+
+        return False
+    
+    def try_place_item_with_rotation(self, item: Item, rotation: int) -> bool:
+        """Apply rotation on item and try placing it in the bin """
+        rotated_item = item.rotated(rotation)
+        return self.place_item(rotated_item)
+
+    def used_volume(self) -> int:
+        return sum(item.volume() for item in self.items)
+
+    def fill_ratio(self) -> float:
+        return self.used_volume() / (self.w * self.h * self.d)
+
+    def max_height_used(self) -> int:
+        if not self.items:
+            return 0
+        return max(item.z + item.h for item in self.items)
+    
+def generate_random_items(
+        n: int,
+        min_size: int,
+        max_size: int,
+        seed: Optional[int] = None,
+)-> List[Item]:
+    """
+    Generate a List of random Item with size n, and dimensions of Item limited with min_size and max_size.
+    """
+    if seed is not None:
+        random.seed(seed)
+
+    items: List[Item] = []
+
+    for _ in range(n):
+        shape = random.choice(['cube', 'bar', 'plate', 'random'])
+
+        match shape:
+            case 'cube':
+                a = random.randint(min_size, max_size)
+                w, h, d = a, a, a
+            case 'bar':
+                a = random.randint(min_size, max_size)
+                b = random.randint(min_size, max_size // 2)
+                w, h, d = a, b, b
+            case 'plate':
+                a = random.randint(min_size, max_size)
+                b = random.randint(min_size, max_size // 3)
+                w, h, d = a, a, b
+            case _:
+                w = random.randint(min_size, max_size)
+                h = random.randint(min_size, max_size)
+                d = random.randint(min_size, max_size)
+            
+        items.append(Item(w,h,d))
+    
+    return items
+
+def evaluate_individual(
+        individual: List[Tuple[int, int]],
+        items: List[Item],
+        bin: Bin,
+        fitness_type: Literal['fill_ratio','item_rejected','volume_rejected','height_penalized'] = 'item_rejected',
+        *,
+        rejection_penalty: float = 0.01,
+        volume_penalty: float = 0.001,
+        height_penalty: float = 0.01,
+)->float:
+    """
+    Evaluate a GA individual for the 3D Bin Packing Problem using a single bin and different fitness_type.
+
+    -'fill_ratio': Maximizes the bin volume utilization.
+    -'item_rejected': Maximizes fill ratio while penalizing rejected items.
+    -'volume_rejected': Maximizes fill ratio while penalizing rejected volume.
+    -'height_penalized': Maximizes fill ratio while penalizing the used bin height.
+    """
+
+    rejected_items = 0
+    rejected_volume = 0
+
+    for item_id, rotation in individual:
+        item = items[item_id].copy()
+
+        if not bin.try_place_item_with_rotation(item, rotation):
+            rejected_items += 1
+            rejected_volume += item.volume()
+
+    # main metric
+    fill = bin.fill_ratio()
+    used_height = bin.max_height_used()
+    bin_height = bin.h
+
+    if fitness_type == 'fill_ratio':
+        fitness = fill
+    elif fitness_type == 'item_rejected':
+        fitness = fill - rejection_penalty * rejected_items
+    elif fitness_type == 'volume_rejected':
+        fitness = fill - volume_penalty * rejected_volume
+    else:
+        height_ratio = used_height / bin_height if bin_height > 0 else 0
+        fitness = fill - height_penalty * height_ratio
+
+    return max(0.0, fitness)
+
+def build_bin_from_individual(
+        individual: list[tuple[int, int]],
+        items: list[Item],
+        bin_dims: tuple[int, int, int]
+)->Bin:
+    """Build a Bin class using a individual tuple"""
+    bin = Bin(*bin_dims)
+
+    for item_id, rotation in individual:
+        item = items[item_id].copy()
+        bin.try_place_item_with_rotation(item, rotation)
+
+    return bin
+
+def draw_cuboid(ax, x, y, z, w, h, d, color, alpha=0.6)->None:
+    """Draw cuboid for items on bin"""
+    vertices = [
+        [(x, y, z), (x+w, y, z), (x+w, y+d, z), (x, y+d, z)],
+        [(x, y, z+h), (x+w, y, z+h), (x+w, y+d, z+h), (x, y+d, z+h)],
+        [(x, y, z), (x+w, y, z), (x+w, y, z+h), (x, y, z+h)],
+        [(x, y+d, z), (x+w, y+d, z), (x+w, y+d, z+h), (x, y+d, z+h)],
+        [(x, y, z), (x, y+d, z), (x, y+d, z+h), (x, y, z+h)],
+        [(x+w, y, z), (x+w, y+d, z), (x+w, y+d, z+h), (x+w, y, z+h)],
+    ]
+
+    ax.add_collection3d(
+        Poly3DCollection(vertices, facecolors=color, linewidths=0.5, edgecolors='k', alpha=alpha)
+    )
+
+def draw_bin_wireframe(ax, w, h, d)->None:
+    """Draw bin wireframe"""
+    edges = [
+        [(0,0,0), (w,0,0)], [(0,d,0), (w,d,0)],
+        [(0,0,h), (w,0,h)], [(0,d,h), (w,d,h)],
+
+        [(0,0,0), (0,d,0)], [(w,0,0), (w,d,0)],
+        [(0,0,h), (0,d,h)], [(w,0,h), (w,d,h)],
+
+        [(0,0,0), (0,0,h)], [(w,0,0), (w,0,h)],
+        [(0,d,0), (0,d,h)], [(w,d,0), (w,d,h)],
+    ]
+
+    for edge in edges:
+        xs, ys, zs = zip(*edge)
+        ax.plot(xs, ys, zs, color='black', linewidth=1)
+
+def plot_bin_3d(bin: Bin, plot_path: str, filename: str='bin_3d.png')->None:
+    """Use matplotlib and mpl_toolkits for a 3d plot of bin with items"""
+    bin_w = bin.w
+    bin_h = bin.h
+    bin_d = bin.d
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Draw items
+    for item in bin.items:
+        color = (
+            random.random(),
+            random.random(),
+            random.random()
+        )
+        draw_cuboid(
+            ax,
+            item.x, item.y, item.z,
+            item.w, item.h, item.d,
+            color=color,
+            alpha=0.6
+        )
+
+    # Draw bin wireframe
+    draw_bin_wireframe(ax, bin_w, bin_h, bin_d)
+
+    ax.set_xlim(0, bin_w)
+    ax.set_ylim(0, bin_d)
+    ax.set_zlim(0, bin_h)
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    ax.set_title('3D Bin Packing – Final Solution')
+
+    save_plot(plot_path, filename)
+
+def assert_no_collisions(bin: Bin):
+    for i in range(len(bin.items)):
+        for j in range(i+1, len(bin.items)):
+            if bin.items[i].intersects(bin.items[j]):
+                raise RuntimeError("COLISÃO DETECTADA!")
+
+def save_dataframe_csv(
+        results: pd.DataFrame,
+        metrics_path: str,
+        filename: str = 'metrics.csv'
+)->None:
+    #Ensure that metrics dir exist
+    os.makedirs(metrics_path, exist_ok=True)
+
+    csv_file = os.path.join(metrics_path, filename)
+
+    results.to_csv(csv_file, index=False)
