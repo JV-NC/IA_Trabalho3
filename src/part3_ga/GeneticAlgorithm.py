@@ -1,20 +1,37 @@
 import random
 import matplotlib.pyplot as plt
+import pandas as pd
+from itertools import product
+from joblib import Parallel, delayed
+import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
 from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions
 
 #TODO: implement others fitness functions (height, items not used, etc)
-#TODO: implement sensibility plot, with parameters changes.
+#TODO: implement csv path save
 #TODO: check items colision for plot and fitness
 
 plot_path = 'output/plots/ga'
+metrics_path = 'output/metrics/ga'
 
 SEED = 42
 random.seed(SEED)
 BIN_W, BIN_H, BIN_D = (25,50,25)
 items = generate_random_items(n=20, min_size=5, max_size=25)
+
+POP_SIZES = [20, 50, 100]
+CX_RATES  = [0.6, 0.8, 0.95]
+MUT_RATES = [0.05, 0.2, 0.4]
+MAX_ITERS = [150, 300, 500]
+
+PARAM_GRID = list(product(
+    POP_SIZES,
+    CX_RATES,
+    MUT_RATES,
+    MAX_ITERS
+))
 
 def create_individual(num_items: int) -> list[tuple[int, int]]:
     ids = list(range(num_items))
@@ -135,30 +152,115 @@ def plot_history(history_best: list[float], history_avg: list[float], filename: 
     plt.grid(True)
     save_plot(plot_path, filename)
 
-def main():
+def run_ga_config(
+    config_id: int,
+    pop_size: int,
+    cx_rate: float,
+    mut_rate: float,
+    max_iters: int,
+    seed: int,
+):
+    random.seed(seed)
+
     ga = GA(
-        pop_size=50,
-        cx_rate=0.8,
-        mut_rate=0.2,
+        pop_size=pop_size,
+        cx_rate=cx_rate,
+        mut_rate=mut_rate,
         fitness_fn=fitness,
         create_ind=lambda: create_individual(len(items)),
         mutate=mutate,
         crossover=ox_crossover,
-        max_iters=300,
+        max_iters=max_iters,
     )
+
+    best_ind, best_fit = ga.run()
+
+    return {
+        'config_id': config_id,
+        'pop_size': pop_size,
+        'cx_rate': cx_rate,
+        'mut_rate': mut_rate,
+        'max_iters': max_iters,
+        'best_fit': best_fit,
+        'best_ind': best_ind,
+        'history_best': ga.history_best,
+        'history_avg': ga.history_avg,
+    }
+
+def plot_sensitivity_1d(
+    df: pd.DataFrame,
+    param_name: str,
+    fixed_params: dict[str,float],
+    filename: str,
+)->None:
+    subset = df.copy()
+
+    for k, v in fixed_params.items():
+        subset = subset[subset[k] == v]
+
+    grouped = subset.groupby(param_name)['best_fit']
+    means = grouped.mean()
+    stds = grouped.std()
+
+    plt.figure()
+    plt.errorbar(
+        means.index,
+        means.values,
+        yerr=stds.values,
+        fmt='-o',
+        capsize=5
+    )
+    plt.xlabel(param_name)
+    plt.ylabel('Best fitness')
+    plt.title(f'GA Sensitivity – {param_name}')
+    plt.grid(True)
+    save_plot(plot_path, filename)
+
+def main():
+    start = time.perf_counter()
+
+    raw_results = Parallel(n_jobs=-1,backend='loky')(
+        delayed(run_ga_config)(
+            i,pop,cx,mut,iters,seed=SEED)
+            for i, (pop, cx, mut, iters) in enumerate(PARAM_GRID))
+    
+    elapsed = time.perf_counter()-start
+    print(f'Total GA grid search time: {elapsed:.2f}s')
+
     # for i, item in enumerate(items):
     #     print(f'item {i}: w = {item.w}, h = {item.h}, d = {item.d}')
     total_item_volume = sum([item.volume() for item in items])
     bin_volume = (BIN_W * BIN_H * BIN_D)
     print(f'total item volume = {total_item_volume}\nbin volume = {bin_volume}\nitem/bin rate = {total_item_volume/bin_volume:.4f}')
-    best_ind, best_fit = ga.run()
-    print(f'best fitness = {best_fit:.4f}')
 
-    plot_history(ga.history_best,ga.history_avg)
+    best_result =  max(raw_results,key=lambda r: r['best_fit'])
 
-    final_bin = build_bin_from_individual(best_ind, items, (BIN_W, BIN_H, BIN_D))
+    print('\n===== BEST CONFIGURATION =====')
+    for k in ['pop_size','cx_rate','mut_rate','max_iters']:
+        print(f'{k}: {best_result[k]}')
+
+    print(f'best fitness = {best_result['best_fit']:.4f}')
+
+    plot_history(best_result['history_best'],best_result['history_avg'])
+
+    final_bin = build_bin_from_individual(best_result['best_ind'], items, (BIN_W, BIN_H, BIN_D))
     assert_no_collisions(final_bin)
+    print(f'best fill ratio = {100*final_bin.fill_ratio():.2f}%')
     plot_bin_3d(final_bin,plot_path,'bin_final_3d.png')
+
+    df = pd.DataFrame(raw_results)
+
+    fixed = {
+        'pop_size': best_result['pop_size'],
+        'cx_rate': best_result['cx_rate'],
+        'mut_rate': best_result['mut_rate'],
+        'max_iters': best_result['max_iters'],
+    }
+
+    plot_sensitivity_1d(df, 'pop_size', fixed, 'sens_pop_size.png')
+    plot_sensitivity_1d(df, 'cx_rate', fixed, 'sens_cx_rate.png')
+    plot_sensitivity_1d(df, 'mut_rate', fixed, 'sens_mut_rate.png')
+    plot_sensitivity_1d(df, 'max_iters', fixed, 'sens_max_iters.png')
 
 if __name__ == '__main__':
     main()
