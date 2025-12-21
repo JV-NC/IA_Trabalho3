@@ -1,5 +1,7 @@
 src/common/__pycache__
 data/kaggle_dataset/*.csv
+!data/kaggle_dataset/FlightSatisfaction.csv
+.venv
 output/models/**/*.pkl
 output/metrics/**/*.csv
 output/plots/**/*.png
