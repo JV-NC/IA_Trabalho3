@@ -6,10 +6,13 @@ setup:
 	python -m venv .venv
 	. .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
+data:
+	$(PYTHON) src/common/merge_csv.py
+
 part1:
 	$(PYTHON) src/part1_decision_tree/DecisionTree.py
 
-part2:
+part2: data
 	$(PYTHON) src/part2_ml/dt.py
 	$(PYTHON) src/part2_ml/knn.py
 	$(PYTHON) src/part2_ml/svm.py
