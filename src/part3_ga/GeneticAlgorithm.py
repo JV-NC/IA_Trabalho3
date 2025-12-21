@@ -1,5 +1,4 @@
 import random
-import matplotlib.pyplot as plt
 import pandas as pd
 from itertools import product
 from joblib import Parallel, delayed
@@ -48,7 +47,7 @@ def fitness(individual: list[tuple[int, int]])->float:
         individual,
         items,
         bin,
-        'item_rejected'
+        'fill_ratio'
     )
 
 def ox_crossover(p1, p2):
