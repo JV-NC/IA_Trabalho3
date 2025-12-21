@@ -7,11 +7,10 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions
+from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv
 
-#TODO: implement others fitness functions (height, items not used, etc)
+#TODO: refactor fitness functions for fitness selection
 #TODO: implement csv path save
-#TODO: check items colision for plot and fitness
 
 plot_path = 'output/plots/ga'
 metrics_path = 'output/metrics/ga'
@@ -162,6 +161,8 @@ def run_ga_config(
 ):
     random.seed(seed)
 
+    start = time.perf_counter()
+
     ga = GA(
         pop_size=pop_size,
         cx_rate=cx_rate,
@@ -175,6 +176,8 @@ def run_ga_config(
 
     best_ind, best_fit = ga.run()
 
+    elapsed = time.perf_counter() - start
+
     return {
         'config_id': config_id,
         'pop_size': pop_size,
@@ -183,6 +186,7 @@ def run_ga_config(
         'max_iters': max_iters,
         'best_fit': best_fit,
         'best_ind': best_ind,
+        'time_sec': elapsed,
         'history_best': ga.history_best,
         'history_avg': ga.history_avg,
     }
@@ -239,17 +243,32 @@ def main():
     for k in ['pop_size','cx_rate','mut_rate','max_iters']:
         print(f'{k}: {best_result[k]}')
 
-    print(f'best fitness = {best_result['best_fit']:.4f}')
+    print(f'fitness = {best_result['best_fit']:.4f}')
 
     plot_history(best_result['history_best'],best_result['history_avg'])
 
     final_bin = build_bin_from_individual(best_result['best_ind'], items, (BIN_W, BIN_H, BIN_D))
     assert_no_collisions(final_bin)
-    print(f'best fill ratio = {100*final_bin.fill_ratio():.2f}%')
+    print(f'fill ratio = {100*final_bin.fill_ratio():.2f}%')
+    print(f'time (sec) = {best_result['time_sec']:.2f}')
     plot_bin_3d(final_bin,plot_path,'bin_final_3d.png')
 
     df = pd.DataFrame(raw_results)
 
+    fill_ratios = []
+    for _, row in df.iterrows():
+        final_bin = build_bin_from_individual(
+            row['best_ind'],
+            items,
+            (BIN_W, BIN_H, BIN_D)
+        )
+        fill_ratios.append(final_bin.fill_ratio())
+    
+    df['fill_ratio'] = fill_ratios
+    
+    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'ga_sensitivity_results.csv')
+    best_row = df.loc[df["fill_ratio"].idxmax()]
+    print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
     fixed = {
         'pop_size': best_result['pop_size'],
         'cx_rate': best_result['cx_rate'],

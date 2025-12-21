@@ -567,3 +567,15 @@ def assert_no_collisions(bin: Bin):
         for j in range(i+1, len(bin.items)):
             if bin.items[i].intersects(bin.items[j]):
                 raise RuntimeError("COLISÃO DETECTADA!")
+
+def save_dataframe_csv(
+        results: pd.DataFrame,
+        metrics_path: str,
+        filename: str = 'metrics.csv'
+)->None:
+    #Ensure that metrics dir exist
+    os.makedirs(metrics_path, exist_ok=True)
+
+    csv_file = os.path.join(metrics_path, filename)
+
+    results.to_csv(csv_file, index=False)
