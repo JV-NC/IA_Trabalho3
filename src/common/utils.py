@@ -458,24 +458,48 @@ def generate_random_items(
 def evaluate_individual(
         individual: List[Tuple[int, int]],
         items: List[Item],
-        bin: Bin
+        bin: Bin,
+        fitness_type: Literal['fill_ratio','item_rejected','volume_rejected','height_penalized'] = 'item_rejected',
+        *,
+        rejection_penalty: float = 0.01,
+        volume_penalty: float = 0.001,
+        height_penalty: float = 0.01,
 )->float:
+    """
+    Evaluate a GA individual for the 3D Bin Packing Problem using a single bin and different fitness_type.
 
-    rejected = 0
+    -'fill_ratio': Maximizes the bin volume utilization.
+    -'item_rejected': Maximizes fill ratio while penalizing rejected items.
+    -'volume_rejected': Maximizes fill ratio while penalizing rejected volume.
+    -'height_penalized': Maximizes fill ratio while penalizing the used bin height.
+    """
+
+    rejected_items = 0
+    rejected_volume = 0
 
     for item_id, rotation in individual:
         item = items[item_id].copy()
 
         if not bin.try_place_item_with_rotation(item, rotation):
-            rejected += 1
+            rejected_items += 1
+            rejected_volume += item.volume()
 
     # main metric
     fill = bin.fill_ratio()
+    used_height = bin.max_height_used()
+    bin_height = bin.h
 
-    # penalização leve por rejeição (opcional)
-    penalty = 0.01 * rejected
+    if fitness_type == 'fill_ratio':
+        fitness = fill
+    elif fitness_type == 'item_rejected':
+        fitness = fill - rejection_penalty * rejected_items
+    elif fitness_type == 'volume_rejected':
+        fitness = fill - volume_penalty * rejected_volume
+    else:
+        height_ratio = used_height / bin_height if bin_height > 0 else 0
+        fitness = fill - height_penalty * height_ratio
 
-    return max(0.0, fill - penalty)
+    return max(0.0, fitness)
 
 def build_bin_from_individual(
         individual: list[tuple[int, int]],

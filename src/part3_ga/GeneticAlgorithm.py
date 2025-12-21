@@ -200,20 +200,16 @@ def plot_sensitivity_1d(
     subset = df.copy()
 
     for k, v in fixed_params.items():
-        subset = subset[subset[k] == v]
+        if k!= param_name:
+            subset = subset[subset[k] == v]
 
-    grouped = subset.groupby(param_name)['best_fit']
-    means = grouped.mean()
-    stds = grouped.std()
+    subset = subset.sort_values(param_name)
+
+    x = subset[param_name]
+    y = subset['best_fit']
 
     plt.figure()
-    plt.errorbar(
-        means.index,
-        means.values,
-        yerr=stds.values,
-        fmt='-o',
-        capsize=5
-    )
+    plt.plot(x, y, '-o')
     plt.xlabel(param_name)
     plt.ylabel('Best fitness')
     plt.title(f'GA Sensitivity – {param_name}')
@@ -269,11 +265,12 @@ def main():
     save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'ga_sensitivity_results.csv')
     best_row = df.loc[df["fill_ratio"].idxmax()]
     print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
+    mid_value = lambda lst: lst[len(lst)//2]
     fixed = {
-        'pop_size': best_result['pop_size'],
-        'cx_rate': best_result['cx_rate'],
-        'mut_rate': best_result['mut_rate'],
-        'max_iters': best_result['max_iters'],
+        'pop_size': mid_value(POP_SIZES),
+        'cx_rate': mid_value(CX_RATES),
+        'mut_rate': mid_value(MUT_RATES),
+        'max_iters': mid_value(MAX_ITERS)
     }
 
     plot_sensitivity_1d(df, 'pop_size', fixed, 'sens_pop_size.png')
