@@ -7,7 +7,8 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv, plot_history, plot_sensitivity
+from utils import (Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions,
+                   save_dataframe_csv, plot_history, plot_sensitivity, fitness)
 
 plot_path = 'output/plots/aco'
 metrics_path = 'output/metrics/aco'
@@ -108,13 +109,7 @@ class AntColony:
         return solution
 
     def evaluate(self, individual: list[tuple[int, int]])->float:
-        bin = Bin(*self.bin_dims)
-        return evaluate_individual(
-            individual,
-            self.items,
-            bin,
-            fitness_type='item_rejected'
-        )
+        return fitness(individual, self.items, self.bin_dims)
 
     def update_pheromones(self, solutions: list[tuple[int, int]]):
         self.pheromone *= (1 - self.decay)
@@ -217,8 +212,8 @@ def main():
     for k in ['n_ants','n_best','n_iters','decay','alpha','beta']:
         print(f'{k}: {best_result[k]}')
 
-    print(f'fitness = {best_result["best_fit"]:.4f}')
-    print(f'time (sec) = {best_result["time_sec"]:.2f}')
+    print(f'fitness = {best_result['best_fit']:.4f}')
+    print(f'time (sec) = {best_result['time_sec']:.2f}')
 
     plot_history(best_result['history_best'], best_result['history_avg'], plot_path, filename='fitness_evo_iter.png', title='ACO – Fitness Evolution')
 
@@ -241,7 +236,7 @@ def main():
     save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']),metrics_path,'sensitivity_results.csv')
 
     # best_row = df.loc[df['fill_ratio'].idxmax()]
-    # print(f'\nBest fill_ratio = {100 * best_row["fill_ratio"]:.2f}%')
+    # print(f'\nBest fill_ratio = {100 * best_row['fill_ratio']:.2f}%')
 
     mid = lambda lst: lst[len(lst)//2]
     fixed = {

@@ -6,7 +6,8 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv, plot_history, plot_sensitivity
+from utils import (Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions,
+                   save_dataframe_csv, plot_history, plot_sensitivity, create_individual, fitness, ox_crossover, mutate)
 
 plot_path = 'output/plots/ga'
 metrics_path = 'output/metrics/ga'
@@ -28,71 +29,7 @@ PARAM_GRID = list(product(
     MAX_ITERS
 ))
 
-def create_individual(num_items: int) -> list[tuple[int, int]]:
-    """Create individual with a certain number of items and rotations"""
-    ids = list(range(num_items))
-    random.shuffle(ids)
-
-    individual = []
-    for i in ids:
-        rotation = random.randint(0, 5)
-        individual.append((i, rotation))
-
-    return individual
-
-def fitness(individual: list[tuple[int, int]])->float:
-    """Instantiate a bin and evaluate individual using it"""
-    bin = Bin(BIN_W,BIN_H,BIN_D)
-    return evaluate_individual(
-        individual,
-        items,
-        bin,
-        'fill_ratio'
-    )
-
-def ox_crossover(p1, p2):
-    """Crossover parents genes, creating two oposite children"""
-    size = len(p1)
-    a, b = sorted(random.sample(range(size), 2))
-
-    def make_child(p1, p2):
-        child = [None] * size
-        child[a:b] = p1[a:b]
-
-        used = {gene[0] for gene in child if gene is not None}
-        pos = b
-
-        for gene in p2:
-            if gene[0] not in used:
-                if pos >= size:
-                    pos = 0
-                child[pos] = gene
-                pos += 1
-
-        return child
-
-    return make_child(p1, p2), make_child(p2, p1)
-
-def mutate_swap(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Mutate swaping individual's genes"""
-    i, j = random.sample(range(len(individual)), 2)
-    individual[i], individual[j] = individual[j], individual[i]
-    return individual
-
-def mutate_rotation(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Mutate individual changing the rotation"""
-    i = random.randrange(len(individual))
-    item_id, _ = individual[i]
-    individual[i] = (item_id, random.randint(0, 5))
-    return individual
-
-def mutate(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Choose between swap or rotation"""
-    if random.random() < 0.5:
-        return mutate_swap(individual)
-    else:
-        return mutate_rotation(individual)
-
+fitness_fn = lambda ind: fitness(ind,items,(BIN_W, BIN_H, BIN_D))
 
 class GA:
     def __init__(self, pop_size, cx_rate, mut_rate, fitness_fn, create_ind, mutate, crossover,
@@ -160,7 +97,7 @@ def run_ga_config(
         pop_size=pop_size,
         cx_rate=cx_rate,
         mut_rate=mut_rate,
-        fitness_fn=fitness,
+        fitness_fn=fitness_fn,
         create_ind=lambda: create_individual(len(items)),
         mutate=mutate,
         crossover=ox_crossover,
@@ -232,7 +169,7 @@ def main():
     df['fill_ratio'] = fill_ratios
     
     save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'ga_sensitivity_results.csv')
-    # best_row = df.loc[df["fill_ratio"].idxmax()]
+    # best_row = df.loc[df['fill_ratio'].idxmax()]
     # print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
     mid_value = lambda lst: lst[len(lst)//2]
     fixed = {

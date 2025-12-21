@@ -502,9 +502,9 @@ def evaluate_individual(
     return max(0.0, fitness)
 
 def build_bin_from_individual(
-        individual: list[tuple[int, int]],
-        items: list[Item],
-        bin_dims: tuple[int, int, int]
+        individual: List[Tuple[int, int]],
+        items: List[Item],
+        bin_dims: Tuple[int, int, int]
 )->Bin:
     """Build a Bin class using a individual tuple"""
     bin = Bin(*bin_dims)
@@ -514,6 +514,73 @@ def build_bin_from_individual(
         bin.try_place_item_with_rotation(item, rotation)
 
     return bin
+
+def create_individual(num_items: int) -> List[Tuple[int, int]]:
+    """Create individual with a certain number of items and rotations"""
+    ids = list(range(num_items))
+    random.shuffle(ids)
+
+    individual = []
+    for i in ids:
+        rotation = random.randint(0, 5)
+        individual.append((i, rotation))
+
+    return individual
+
+def fitness(individual: list[tuple[int, int]], items: List[Item], bin_dims: Tuple[float, float, float], type: Literal['fill_ratio','item_rejected','volume_rejected','height_penalized'] = 'fill_ratio')->float:
+    """Instantiate a bin and evaluate individual using it"""
+    bin = Bin(*bin_dims)
+    return evaluate_individual(
+        individual,
+        items,
+        bin,
+        type
+    )
+
+def ox_crossover(p1, p2):
+    """Crossover parents genes, creating two oposite children"""
+    size = len(p1)
+    a, b = sorted(random.sample(range(size), 2))
+
+    def make_child(p1, p2):
+        child = [None] * size
+        child[a:b] = p1[a:b]
+
+        used = {gene[0] for gene in child if gene is not None}
+        pos = b
+
+        for gene in p2:
+            if gene[0] not in used:
+                if pos >= size:
+                    pos = 0
+                child[pos] = gene
+                pos += 1
+
+        return child
+
+    return make_child(p1, p2), make_child(p2, p1)
+
+def mutate_swap(individual: List[Tuple[int, int]])->List[Tuple[int, int]]:
+    """Mutate swaping individual's genes"""
+    ind = individual[:]
+    i, j = random.sample(range(len(ind)), 2)
+    ind[i], ind[j] = ind[j], ind[i]
+    return ind
+
+def mutate_rotation(individual: List[Tuple[int, int]])->List[Tuple[int, int]]:
+    """Mutate individual changing the rotation"""
+    ind = individual[:]
+    i = random.randrange(len(ind))
+    item_id, _ = ind[i]
+    ind[i] = (item_id, random.randint(0, 5))
+    return ind
+
+def mutate(individual: List[Tuple[int, int]])->List[Tuple[int, int]]:
+    """Choose between swap or rotation"""
+    if random.random() < 0.5:
+        return mutate_swap(individual)
+    else:
+        return mutate_rotation(individual)
 
 def plot_history(
         history_best: list[float],

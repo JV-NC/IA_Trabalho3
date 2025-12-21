@@ -8,7 +8,8 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv, plot_history, plot_sensitivity
+from utils import (Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions,
+                   save_dataframe_csv, plot_history, plot_sensitivity, create_individual, fitness, mutate)
 
 plot_path = 'output/plots/clonalg'
 metrics_path = 'output/metrics/clonalg'
@@ -18,54 +19,24 @@ random.seed(SEED)
 BIN_W, BIN_H, BIN_D = (25,50,25)
 items = generate_random_items(n=20, min_size=5, max_size=25)
 
+POP_SIZES = [30, 50, 80]
+N_SELECTS = [5, 10, 15]
+CLONE_FACTORS = [4, 8, 12]
+MAX_ITERS = [100, 150, 250]
+
+PARAM_GRID = list(product(
+    POP_SIZES,
+    N_SELECTS,
+    CLONE_FACTORS,
+    MAX_ITERS
+))
+
 #TODO: make commons for GA, ACO and CLONALG (fitness, create, mutate, etc)
 #TODO: clean create lambda
 
-def create_individual(num_items: int) -> list[tuple[int, int]]:
-    """Create individual with a certain number of items and rotations"""
-    ids = list(range(num_items))
-    random.shuffle(ids)
-
-    individual = []
-    for i in ids:
-        rotation = random.randint(0, 5)
-        individual.append((i, rotation))
-
-    return individual
-
 create = lambda: create_individual(len(items))
 
-def fitness(individual: list[tuple[int, int]])->float:
-    """Instantiate a bin and evaluate individual using it"""
-    bin = Bin(BIN_W,BIN_H,BIN_D)
-    return evaluate_individual(
-        individual,
-        items,
-        bin,
-        'fill_ratio'
-    )
-
-def mutate_swap(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Mutate swaping individual's genes"""
-    ind = individual[:]
-    i, j = random.sample(range(len(ind)), 2)
-    ind[i], ind[j] = ind[j], ind[i]
-    return ind
-
-def mutate_rotation(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Mutate individual changing the rotation"""
-    ind = individual[:]
-    i = random.randrange(len(ind))
-    item_id, _ = ind[i]
-    ind[i] = (item_id, random.randint(0, 5))
-    return ind
-
-def mutate(individual: list[tuple[int, int]])->list[tuple[int, int]]:
-    """Choose between swap or rotation"""
-    if random.random() < 0.5:
-        return mutate_swap(individual)
-    else:
-        return mutate_rotation(individual)
+fitness_fn = lambda ind: fitness(ind, items, (BIN_W, BIN_H, BIN_D))
 
 class CLONALG:
     def __init__(
@@ -137,7 +108,7 @@ class CLONALG:
     
     def run(self):
         best_ind = None
-        best_fit = -float("inf")
+        best_fit = -float('inf')
 
         for _ in range(self.max_iters):
             self.step()
@@ -149,29 +120,106 @@ class CLONALG:
                 best_ind = current_best
 
         return best_ind, best_fit
-    
-def main():
+
+def run_clonalg_config(
+        config_id: int,
+        pop_size: int,
+        n_select: int,
+        clone_factor: int,
+        max_iters: int,
+        seed: int
+):
+    random.seed(seed)
+    np.random.seed(seed)
+
+    start = time.perf_counter()
+
     clonalg = CLONALG(
-        fitness_fn=fitness,
+        fitness_fn=fitness_fn,
         create_ind=create,
         mutate=mutate,
-        pop_size=50,
-        n_select=10,
-        clone_factor=8,
-        max_iters=150
-        )
-    
+        pop_size=pop_size,
+        n_select=n_select,
+        clone_factor=clone_factor,
+        max_iters=max_iters,
+        seed=seed
+    )
+
     best_ind, best_fit = clonalg.run()
-    print(f"Best fitness = {best_fit:.4f}")
+    elapsed = time.perf_counter() - start
+
+    return {
+        'config_id': config_id,
+        'pop_size': pop_size,
+        'n_select': n_select,
+        'clone_factor': clone_factor,
+        'max_iters': max_iters,
+        'best_fit': best_fit,
+        'best_ind': best_ind,
+        'time_sec': elapsed,
+        'history_best': clonalg.history_best,
+        'history_avg': clonalg.history_avg
+    }
+
+def main():
+    start = time.perf_counter()
+
+    raw_results = Parallel(n_jobs=-1, backend='loky')(
+        delayed(run_clonalg_config)(i, pop, sel, cf, iters, SEED)
+        for i, (pop, sel, cf, iters) in enumerate(PARAM_GRID))
     
-    plot_history(clonalg.history_best,clonalg.history_avg,plot_path=plot_path,filename='fitness_evo_iter.png',title='CLONALG – Fitness Evolution')
+    elapsed = time.perf_counter() - start
+    print(f'Total CLONALG grid search time: {elapsed:.2f}s')
 
-    final_bin = build_bin_from_individual(best_ind,items,(BIN_W, BIN_H, BIN_D))
+    total_item_volume = sum([item.volume() for item in items])
+    bin_volume = (BIN_W * BIN_H * BIN_D)
+    print(f'total item volume = {total_item_volume}\nbin volume = {bin_volume}\nitem/bin rate = {total_item_volume/bin_volume:.4f}')
 
+    best_result = max(raw_results, key=lambda r: r['best_fit'])
+
+    print('\n===== BEST CLONALG CONFIGURATION =====')
+    for k in ['pop_size','n_select','clone_factor','max_iters']:
+        print(f'{k}: {best_result[k]}')
+
+    print(f'fitness = {best_result['best_fit']:.4f}')
+    print(f'time (sec) = {best_result['time_sec']:.2f}')
+
+    plot_history(best_result['history_best'], best_result['history_avg'], plot_path, filename='fitness_evo_iter.png', title='CLONALG – Fitness Evolution')
+
+    final_bin = build_bin_from_individual(best_result['best_ind'],items,(BIN_W, BIN_H, BIN_D))
     assert_no_collisions(final_bin)
-    print(f"Fill ratio = {100 * final_bin.fill_ratio():.2f}%")
+
+    print(f'Fill ratio = {100 * final_bin.fill_ratio():.2f}%')
 
     plot_bin_3d(final_bin, plot_path, 'bin_final_3d.png')
 
-if __name__ == "__main__":
+    df = pd.DataFrame(raw_results)
+
+    fill_ratios = []
+    for _, row in df.iterrows():
+        final_bin = build_bin_from_individual(row['best_ind'],items,(BIN_W, BIN_H, BIN_D))
+        fill_ratios.append(final_bin.fill_ratio())
+
+    df['fill_ratio'] = fill_ratios
+
+    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']),metrics_path,'sensitivity_results.csv')
+
+    # best_row = df.loc[df['fill_ratio'].idxmax()]
+    # print(f'\nBest fill_ratio = {100 * best_row['fill_ratio']:.2f}%')
+
+    mid = lambda lst: lst[len(lst)//2]
+    fixed = {
+        'pop_size': mid(POP_SIZES),
+        'n_select': mid(N_SELECTS),
+        'clone_factor': mid(CLONE_FACTORS),
+        'max_iters': mid(MAX_ITERS)
+    }
+
+    plot_sensitivity(df, 'pop_size', fixed, plot_path, 'sens_pop_size.png')
+    plot_sensitivity(df, 'n_select', fixed, plot_path, 'sens_n_select.png')
+    plot_sensitivity(df, 'clone_factor', fixed, plot_path, 'sens_clone_factor.png')
+    plot_sensitivity(df, 'max_iters', fixed, plot_path, 'sens_max_iters.png')
+
+
+if __name__ == '__main__':
     main()
