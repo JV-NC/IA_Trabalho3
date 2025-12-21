@@ -1,112 +1,264 @@
+import random
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+from itertools import product
+from joblib import Parallel, delayed
+import time
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
+from utils import Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv, plot_history, plot_sensitivity
 
-# Número de cidades
-num_cities = 200
-cities = np.random.rand(num_cities, 2)
+plot_path = 'output/plots/aco'
+metrics_path = 'output/metrics/aco'
 
-# Matriz de distâncias
-distance_matrix = np.sqrt(((cities[:, np.newaxis, :] - cities[np.newaxis, :, :]) ** 2).sum(axis=2))
-np.fill_diagonal(distance_matrix, np.inf)  # Evitar divisão por zero
+SEED = 42
+random.seed(SEED)
+BIN_W, BIN_H, BIN_D = (25,50,25)
+items = generate_random_items(n=20, min_size=5, max_size=25)
 
-# Visualização
-plt.scatter(cities[:, 0], cities[:, 1], color="blue")
-for i, (x, y) in enumerate(cities):
-    plt.text(x, y, str(i))
-plt.title("Mapa das Cidades")
-plt.show()
+N_ANTS  = [20, 30, 40]
+N_BEST  = [3, 5, 7]
+N_ITERS = [80, 100, 150]
+DECAYS  = [0.1, 0.2, 0.3]
+ALPHAS  = [1.0, 2.0]
+BETAS   = [1.0, 2.0]
 
-# Classe AntColony
+PARAM_GRID = list(product(
+    N_ANTS,
+    N_BEST,
+    N_ITERS,
+    DECAYS,
+    ALPHAS,
+    BETAS
+))
+
+#TODO: check SEED and items generation, maybe create json or csv for items and run reading it
+
 class AntColony:
-    def __init__(self, distance_matrix, n_ants, n_best, n_iterations,
-                 decay, alpha=1, beta=2):
-        self.distance_matrix = distance_matrix
-        self.pheromone = np.ones(self.distance_matrix.shape) / len(distance_matrix)
+    def __init__(
+        self,
+        items: list[Item],
+        bin_dims: tuple[float, float, float],
+        n_ants: int=30,
+        n_best: int=5,
+        n_iters: int=100,
+        decay: float=0.2,
+        alpha: float=1.0,
+        beta: float=2.0
+    ):
+        self.items = items
+        self.bin_dims = bin_dims
+        self.n_items = len(items)
+
+        # pheromone[item_id][rotation]
+        self.pheromone = np.ones((self.n_items, 6))
         self.n_ants = n_ants
         self.n_best = n_best
-        self.n_iterations = n_iterations
+        self.n_iters = n_iters
         self.decay = decay
         self.alpha = alpha
         self.beta = beta
 
+        #history for plot
+        self.history_best: list[float] = []
+        self.history_avg: list[float] = []
+    
+    def construct_solution(self)->list[tuple[int, int]]:
+        available = set(range(self.n_items))
+        solution = []
+        bin = Bin(*self.bin_dims)
+
+        while available:
+            choices = []
+
+            for item_id in available:
+                for r in range(6):
+                    tau = self.pheromone[item_id][r] ** self.alpha
+                    eta = item_heuristic(
+                        self.items[item_id],
+                        bin,
+                        type='volume_rate'
+                    ) ** self.beta
+
+                    score = tau * eta
+                    if score > 0:
+                        choices.append((item_id, r, score))
+
+            if not choices:
+                break
+
+            total = sum(c[2] for c in choices)
+            probs = [c[2] / total for c in choices]
+
+            item_id, rotation = random.choices(
+                [(c[0], c[1]) for c in choices],
+                weights=probs,
+                k=1
+            )[0]
+
+            item = self.items[item_id].copy()
+            if bin.try_place_item_with_rotation(item, rotation):
+                solution.append((item_id, rotation))
+                available.remove(item_id)
+            else:
+                # if doesn't fit, remove form candidate list
+                available.remove(item_id)
+
+        return solution
+
+    def evaluate(self, individual: list[tuple[int, int]])->float:
+        bin = Bin(*self.bin_dims)
+        return evaluate_individual(
+            individual,
+            self.items,
+            bin,
+            fitness_type='item_rejected'
+        )
+
+    def update_pheromones(self, solutions: list[tuple[int, int]]):
+        self.pheromone *= (1 - self.decay)
+
+        solutions.sort(key=lambda x: x[1], reverse=True)
+
+        for sol, fit in solutions[:self.n_best]:
+            for item_id, r in sol:
+                self.pheromone[item_id][r] += fit
+
     def run(self):
-        shortest_path = None
-        all_time_shortest_path = ("placeholder", np.inf)
-        for _ in range(self.n_iterations):
-            all_paths = self.construct_paths()
-            self.spread_pheromones(all_paths, self.n_best)
-            shortest_path = min(all_paths, key=lambda x: x[1])
-            if shortest_path[1] < all_time_shortest_path[1]:
-                all_time_shortest_path = shortest_path
-            self.pheromone *= self.decay
-        return all_time_shortest_path
+        best_sol = None
+        best_fit = -float('inf')
 
-    def construct_paths(self):
-        all_paths = []
-        for _ in range(self.n_ants):
-            path = self.generate_path(0)
-            all_paths.append((path, self.path_distance(path)))
-        return all_paths
+        for _ in range(self.n_iters):
+            solutions = []
+            fitness_values = []
 
-    def generate_path(self, start):
-        path = []
-        visited = set()
-        visited.add(start)
-        prev = start
-        for _ in range(len(self.distance_matrix) - 1):
-            move = self.pick_move(self.pheromone[prev], self.distance_matrix[prev], visited)
-            path.append((prev, move))
-            prev = move
-            visited.add(move)
-        path.append((prev, start))
-        return path
+            for _ in range(self.n_ants):
+                sol = self.construct_solution()
+                fit = self.evaluate(sol)
 
-    def pick_move(self, pheromone, dist, visited):
-        pheromone = np.copy(pheromone)
-        pheromone[list(visited)] = 0
+                solutions.append((sol, fit))
+                fitness_values.append(fit)
 
-        heuristic = 1.0 / dist
-        heuristic[np.isinf(heuristic)] = 0
+                if fit > best_fit:
+                    best_fit = fit
+                    best_sol = sol
 
-        row = (pheromone ** self.alpha) * (heuristic ** self.beta)
+            self.update_pheromones(solutions)
+            
+            self.history_best.append(max(fitness_values))
+            self.history_avg.append(sum(fitness_values) / len(fitness_values))
 
-        if row.sum() == 0:
-            unvisited = list(set(range(len(self.distance_matrix))) - visited)
-            move = np.random.choice(unvisited)
-        else:
-            move = np.random.choice(range(len(self.distance_matrix)), p=row / row.sum())
+        return best_sol, best_fit
 
-        return move
+def run_aco_config(
+        config_id: int,
+        n_ants: int,
+        n_best: int,
+        n_iters: int,
+        decay: float,
+        alpha: float,
+        beta: float,
+        seed: int
+):
+    random.seed(seed)
+    np.random.seed(seed)
 
-    def path_distance(self, path):
-        return sum(self.distance_matrix[i][j] for i, j in path)
+    start = time.perf_counter()
 
-    def spread_pheromones(self, all_paths, n_best):
-        sorted_paths = sorted(all_paths, key=lambda x: x[1])
-        for path, dist in sorted_paths[:n_best]:
-            for move in path:
-                self.pheromone[move] += 1.0 / dist
+    aco = AntColony(
+        items=items,
+        bin_dims=(BIN_W, BIN_H, BIN_D),
+        n_ants=n_ants,
+        n_best=n_best,
+        n_iters=n_iters,
+        decay=decay,
+        alpha=alpha,
+        beta=beta
+    )
 
-# Exemplo de uso
-ant_colony = AntColony(distance_matrix, n_ants=70, n_best=5, n_iterations=100, decay=0.3)
-best_path = ant_colony.run()
-print("Melhor caminho:", best_path)
+    best_sol, best_fit = aco.run()
 
-# Plotar novamente o mapa com o melhor caminho
-best_edges, best_distance = best_path
+    elapsed = time.perf_counter() - start
 
-plt.figure(figsize=(6, 6))
-plt.scatter(cities[:, 0], cities[:, 1], color="blue")
+    return {
+        'config_id': config_id,
+        'n_ants': n_ants,
+        'n_best': n_best,
+        'n_iters': n_iters,
+        'decay': decay,
+        'alpha': alpha,
+        'beta': beta,
+        'best_fit': best_fit,
+        'best_ind': best_sol,
+        'time_sec': elapsed,
+        'history_best': aco.history_best,
+        'history_avg': aco.history_avg,
+    }
 
-# Plotar rótulos
-for i, (x, y) in enumerate(cities):
-    plt.text(x, y, str(i))
+def main():
+    start = time.perf_counter()
 
-# Desenhar o caminho
-for i, j in best_edges:
-    x_coords = [cities[i][0], cities[j][0]]
-    y_coords = [cities[i][1], cities[j][1]]
-    plt.plot(x_coords, y_coords, color="red")
+    raw_results = Parallel(n_jobs=-1, backend='loky')(
+        delayed(run_aco_config)(
+            i, n_ants, n_best, n_iters, decay, alpha, beta, SEED)
+            for i, (n_ants, n_best, n_iters, decay, alpha, beta) in enumerate(PARAM_GRID))
+            
+    elapsed = time.perf_counter() - start
+    print(f'Total ACO grid search time: {elapsed:.2f}s')
 
-plt.title(f"Melhor Caminho Encontrado (distância = {best_distance:.4f})")
-plt.show()
+    total_item_volume = sum([item.volume() for item in items])
+    bin_volume = (BIN_W * BIN_H * BIN_D)
+    print(f'total item volume = {total_item_volume}\nbin volume = {bin_volume}\nitem/bin rate = {total_item_volume/bin_volume:.4f}')
+
+    best_result = max(raw_results, key=lambda r: r['best_fit'])
+
+    print('\n===== BEST ACO CONFIGURATION =====')
+    for k in ['n_ants','n_best','n_iters','decay','alpha','beta']:
+        print(f'{k}: {best_result[k]}')
+
+    print(f'fitness = {best_result["best_fit"]:.4f}')
+    print(f'time (sec) = {best_result["time_sec"]:.2f}')
+
+    plot_history(best_result['history_best'], best_result['history_avg'], plot_path, filename='fitness_evo_iter.png', title='ACO – Fitness Evolution')
+
+    final_bin = build_bin_from_individual(best_result['best_ind'],items,(BIN_W, BIN_H, BIN_D))
+    assert_no_collisions(final_bin)
+
+    print(f'Fill ratio = {100 * final_bin.fill_ratio():.2f}%')
+
+    plot_bin_3d(final_bin, plot_path, 'bin_final_3d.png')
+
+    df = pd.DataFrame(raw_results)
+
+    fill_ratios = []
+    for _, row in df.iterrows():
+        bin_final = build_bin_from_individual(row['best_ind'],items,(BIN_W, BIN_H, BIN_D))
+        fill_ratios.append(bin_final.fill_ratio())
+
+    df['fill_ratio'] = fill_ratios
+
+    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']),metrics_path,'sensitivity_results.csv')
+
+    # best_row = df.loc[df['fill_ratio'].idxmax()]
+    # print(f'\nBest fill_ratio = {100 * best_row["fill_ratio"]:.2f}%')
+
+    mid = lambda lst: lst[len(lst)//2]
+    fixed = {
+        'n_ants': mid(N_ANTS),
+        'n_best': mid(N_BEST),
+        'n_iters': mid(N_ITERS),
+        'decay': mid(DECAYS),
+        'alpha': mid(ALPHAS),
+        'beta': mid(BETAS),
+    }
+
+    plot_sensitivity(df, 'n_ants', fixed, plot_path, 'sens_n_ants.png')
+    plot_sensitivity(df, 'n_iters', fixed, plot_path, 'sens_n_iters.png')
+    plot_sensitivity(df, 'decay', fixed, plot_path, 'sens_decay.png')
+    plot_sensitivity(df, 'alpha', fixed, plot_path, 'sens_alpha.png')
+    plot_sensitivity(df, 'beta', fixed, plot_path, 'sens_beta.png')
+
+if __name__ == '__main__':
+    main()

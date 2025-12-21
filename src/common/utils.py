@@ -459,7 +459,7 @@ def evaluate_individual(
         individual: List[Tuple[int, int]],
         items: List[Item],
         bin: Bin,
-        fitness_type: Literal['fill_ratio','item_rejected','volume_rejected','height_penalized'] = 'item_rejected',
+        fitness_type: Literal['fill_ratio','item_rejected','volume_rejected','height_penalized'] = 'fill_ratio',
         *,
         rejection_penalty: float = 0.01,
         volume_penalty: float = 0.001,
@@ -514,6 +514,54 @@ def build_bin_from_individual(
         bin.try_place_item_with_rotation(item, rotation)
 
     return bin
+
+def plot_history(
+        history_best: list[float],
+        history_avg: list[float],
+        plot_path: str,
+        filename: str,
+        title: str,
+        xlabel: str = 'Iteration',
+        ylabel: str = 'Fitness'
+)->None:
+    """Plot iteration history"""
+    plt.figure()
+    plt.plot(history_best, label='Best fitness')
+    plt.plot(history_avg, label='Average fitness')
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    save_plot(plot_path, filename)
+
+def plot_sensitivity(
+    df: pd.DataFrame,
+    param_name: str,
+    fixed_params: dict,
+    plot_path: str,
+    filename: str,
+    title_prefix: str = 'Sensitivity'
+)->None:
+    """Plot sensitivity graph changing one hyperparameter and fixating the others """
+    subset = df.copy()
+
+    for k, v in fixed_params.items():
+        if k != param_name:
+            subset = subset[subset[k] == v]
+
+    subset = subset.sort_values(param_name)
+
+    x = subset[param_name]
+    y = subset['best_fit']
+
+    plt.figure()
+    plt.plot(x, y, '-o')
+    plt.xlabel(param_name)
+    plt.ylabel('Best fitness')
+    plt.title(f'{title_prefix} – {param_name}')
+    plt.grid(True)
+    save_plot(plot_path, filename)
 
 def draw_cuboid(ax, x, y, z, w, h, d, color, alpha=0.6)->None:
     """Draw cuboid for items on bin"""
@@ -590,7 +638,7 @@ def assert_no_collisions(bin: Bin):
     for i in range(len(bin.items)):
         for j in range(i+1, len(bin.items)):
             if bin.items[i].intersects(bin.items[j]):
-                raise RuntimeError("COLISÃO DETECTADA!")
+                raise RuntimeError("COLISION DETECTED!")
 
 def save_dataframe_csv(
         results: pd.DataFrame,
@@ -603,3 +651,9 @@ def save_dataframe_csv(
     csv_file = os.path.join(metrics_path, filename)
 
     results.to_csv(csv_file, index=False)
+
+#TODO: implement other heuristics
+def item_heuristic(item: Item, bin: Bin, type: Literal['volume_rate','item_density']='volume_rate')->float:
+    if type == 'volume_rate':
+        return item.volume() / (bin.w * bin.h * bin.d)
+

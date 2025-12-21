@@ -7,7 +7,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv
+from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv, plot_history, plot_sensitivity
 
 plot_path = 'output/plots/ga'
 metrics_path = 'output/metrics/ga'
@@ -144,18 +144,6 @@ class GA:
                 best = cand
         return best, self.fitness_fn(best)
 
-def plot_history(history_best: list[float], history_avg: list[float], filename: str='fitness_evo_gen.png')->None:
-    """Plot population history"""
-    plt.figure()
-    plt.plot(history_best, label='Best fitness')
-    plt.plot(history_avg, label='Average fitness')
-    plt.xlabel('Generation')
-    plt.ylabel('Fitness (fill ratio)')
-    plt.title('GA – Fitness evolution per generation')
-    plt.legend()
-    plt.grid(True)
-    save_plot(plot_path, filename)
-
 def run_ga_config(
     config_id: int,
     pop_size: int,
@@ -197,32 +185,6 @@ def run_ga_config(
         'history_avg': ga.history_avg,
     }
 
-def plot_sensitivity_1d(
-    df: pd.DataFrame,
-    param_name: str,
-    fixed_params: dict[str,float],
-    filename: str,
-)->None:
-    """Plot sensitivity graph changing one hyperparameter and fixating the others """
-    subset = df.copy()
-
-    for k, v in fixed_params.items():
-        if k!= param_name:
-            subset = subset[subset[k] == v]
-
-    subset = subset.sort_values(param_name)
-
-    x = subset[param_name]
-    y = subset['best_fit']
-
-    plt.figure()
-    plt.plot(x, y, '-o')
-    plt.xlabel(param_name)
-    plt.ylabel('Best fitness')
-    plt.title(f'GA Sensitivity – {param_name}')
-    plt.grid(True)
-    save_plot(plot_path, filename)
-
 def main():
     start = time.perf_counter()
 
@@ -249,7 +211,7 @@ def main():
 
     print(f'fitness = {best_result['best_fit']:.4f}')
 
-    plot_history(best_result['history_best'],best_result['history_avg'])
+    plot_history(best_result['history_best'],best_result['history_avg'],plot_path,'fitness_evo_gen.png',title='GA – Fitness Evolution')
 
     final_bin = build_bin_from_individual(best_result['best_ind'], items, (BIN_W, BIN_H, BIN_D))
     assert_no_collisions(final_bin)
@@ -271,8 +233,8 @@ def main():
     df['fill_ratio'] = fill_ratios
     
     save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'ga_sensitivity_results.csv')
-    best_row = df.loc[df["fill_ratio"].idxmax()]
-    print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
+    # best_row = df.loc[df["fill_ratio"].idxmax()]
+    # print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
     mid_value = lambda lst: lst[len(lst)//2]
     fixed = {
         'pop_size': mid_value(POP_SIZES),
@@ -281,10 +243,10 @@ def main():
         'max_iters': mid_value(MAX_ITERS)
     }
 
-    plot_sensitivity_1d(df, 'pop_size', fixed, 'sens_pop_size.png')
-    plot_sensitivity_1d(df, 'cx_rate', fixed, 'sens_cx_rate.png')
-    plot_sensitivity_1d(df, 'mut_rate', fixed, 'sens_mut_rate.png')
-    plot_sensitivity_1d(df, 'max_iters', fixed, 'sens_max_iters.png')
+    plot_sensitivity(df, 'pop_size', fixed, plot_path, 'sens_pop_size.png', title_prefix='GA Sensitivity')
+    plot_sensitivity(df, 'cx_rate', fixed, plot_path, 'sens_cx_rate.png', title_prefix='GA Sensitivity')
+    plot_sensitivity(df, 'mut_rate', fixed, plot_path, 'sens_mut_rate.png', title_prefix='GA Sensitivity')
+    plot_sensitivity(df, 'max_iters', fixed, plot_path, 'sens_max_iters.png', title_prefix='GA Sensitivity')
 
 if __name__ == '__main__':
     main()
