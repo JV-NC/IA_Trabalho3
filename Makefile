@@ -1,12 +1,15 @@
 .PHONY: setup part1 part2 part3 part4 all clean
 
 PYTHON=.venv/bin/python
+DATASET=data/kaggle_dataset/FlightSatisfaction.csv
 
 setup:
 	python -m venv .venv
 	. .venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
-data:
+data: $(DATASET)
+
+$(DATASET):
 	$(PYTHON) src/common/merge_csv.py
 
 part1:
