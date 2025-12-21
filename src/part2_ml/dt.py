@@ -6,7 +6,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, save_plot, plot_roc_curve_binary, plot_confusion_matrix
+from utils import load_dataset, evaluate_model, save_metrics_csv, save_model, plot_roc_curve_binary, plot_confusion_matrix
 
 csv_path = 'data/kaggle_dataset/FlightSatisfaction.csv'
 target_column = 'satisfaction'

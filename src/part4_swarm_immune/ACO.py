@@ -7,7 +7,7 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
-from utils import (Item, Bin, item_heuristic, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions,
+from utils import (Item, Bin, item_heuristic, generate_random_items, build_bin_from_individual, plot_bin_3d, assert_no_collisions,
                    save_dataframe_csv, plot_history, plot_sensitivity, fitness)
 
 plot_path = 'output/plots/aco'
