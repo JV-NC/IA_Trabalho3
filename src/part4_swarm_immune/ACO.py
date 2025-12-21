@@ -18,8 +18,23 @@ random.seed(SEED)
 BIN_W, BIN_H, BIN_D = (25,50,25)
 items = generate_random_items(n=20, min_size=5, max_size=25)
 
-#TODO: check collisions?
-#TODO: check SEED and items generation
+N_ANTS  = [20, 30, 40]
+N_BEST  = [3, 5, 7]
+N_ITERS = [80, 100, 150]
+DECAYS  = [0.1, 0.2, 0.3]
+ALPHAS  = [1.0, 2.0]
+BETAS   = [1.0, 2.0]
+
+PARAM_GRID = list(product(
+    N_ANTS,
+    N_BEST,
+    N_ITERS,
+    DECAYS,
+    ALPHAS,
+    BETAS
+))
+
+#TODO: check SEED and items generation, maybe create json or csv for items and run reading it
 
 class AntColony:
     def __init__(
@@ -137,31 +152,113 @@ class AntColony:
 
         return best_sol, best_fit
 
-def main():
-    aco = AntColony(items,(BIN_W, BIN_H, BIN_D),30,5,100,0.2,1,2)
+def run_aco_config(
+        config_id: int,
+        n_ants: int,
+        n_best: int,
+        n_iters: int,
+        decay: float,
+        alpha: float,
+        beta: float,
+        seed: int
+):
+    random.seed(seed)
+    np.random.seed(seed)
+
+    start = time.perf_counter()
+
+    aco = AntColony(
+        items=items,
+        bin_dims=(BIN_W, BIN_H, BIN_D),
+        n_ants=n_ants,
+        n_best=n_best,
+        n_iters=n_iters,
+        decay=decay,
+        alpha=alpha,
+        beta=beta
+    )
 
     best_sol, best_fit = aco.run()
 
-    print(f'Best fitness = {best_fit:.4f}')
+    elapsed = time.perf_counter() - start
 
-    plot_history(
-        aco.history_best,
-        aco.history_avg,
-        plot_path,
-        filename='aco_fitness_evo.png',
-        title='ACO – Fitness Evolution'
-    )
+    return {
+        'config_id': config_id,
+        'n_ants': n_ants,
+        'n_best': n_best,
+        'n_iters': n_iters,
+        'decay': decay,
+        'alpha': alpha,
+        'beta': beta,
+        'best_fit': best_fit,
+        'best_ind': best_sol,
+        'time_sec': elapsed,
+        'history_best': aco.history_best,
+        'history_avg': aco.history_avg,
+    }
 
-    final_bin = build_bin_from_individual(
-        best_sol,
-        items,
-        (BIN_W, BIN_H, BIN_D)
-    )
+def main():
+    start = time.perf_counter()
 
+    raw_results = Parallel(n_jobs=-1, backend='loky')(
+        delayed(run_aco_config)(
+            i, n_ants, n_best, n_iters, decay, alpha, beta, SEED)
+            for i, (n_ants, n_best, n_iters, decay, alpha, beta) in enumerate(PARAM_GRID))
+            
+    elapsed = time.perf_counter() - start
+    print(f'Total ACO grid search time: {elapsed:.2f}s')
+
+    total_item_volume = sum([item.volume() for item in items])
+    bin_volume = (BIN_W * BIN_H * BIN_D)
+    print(f'total item volume = {total_item_volume}\nbin volume = {bin_volume}\nitem/bin rate = {total_item_volume/bin_volume:.4f}')
+
+    best_result = max(raw_results, key=lambda r: r['best_fit'])
+
+    print('\n===== BEST ACO CONFIGURATION =====')
+    for k in ['n_ants','n_best','n_iters','decay','alpha','beta']:
+        print(f'{k}: {best_result[k]}')
+
+    print(f'fitness = {best_result["best_fit"]:.4f}')
+    print(f'time (sec) = {best_result["time_sec"]:.2f}')
+
+    plot_history(best_result['history_best'], best_result['history_avg'], plot_path, filename='fitness_evo_iter.png', title='ACO – Fitness Evolution')
+
+    final_bin = build_bin_from_individual(best_result['best_ind'],items,(BIN_W, BIN_H, BIN_D))
     assert_no_collisions(final_bin)
+
     print(f'Fill ratio = {100 * final_bin.fill_ratio():.2f}%')
 
-    plot_bin_3d(final_bin, plot_path, 'aco_bin_final_3d.png')
+    plot_bin_3d(final_bin, plot_path, 'bin_final_3d.png')
+
+    df = pd.DataFrame(raw_results)
+
+    fill_ratios = []
+    for _, row in df.iterrows():
+        bin_final = build_bin_from_individual(row['best_ind'],items,(BIN_W, BIN_H, BIN_D))
+        fill_ratios.append(bin_final.fill_ratio())
+
+    df['fill_ratio'] = fill_ratios
+
+    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']),metrics_path,'sensitivity_results.csv')
+
+    # best_row = df.loc[df['fill_ratio'].idxmax()]
+    # print(f'\nBest fill_ratio = {100 * best_row["fill_ratio"]:.2f}%')
+
+    mid = lambda lst: lst[len(lst)//2]
+    fixed = {
+        'n_ants': mid(N_ANTS),
+        'n_best': mid(N_BEST),
+        'n_iters': mid(N_ITERS),
+        'decay': mid(DECAYS),
+        'alpha': mid(ALPHAS),
+        'beta': mid(BETAS),
+    }
+
+    plot_sensitivity(df, 'n_ants', fixed, plot_path, 'sens_n_ants.png')
+    plot_sensitivity(df, 'n_iters', fixed, plot_path, 'sens_n_iters.png')
+    plot_sensitivity(df, 'decay', fixed, plot_path, 'sens_decay.png')
+    plot_sensitivity(df, 'alpha', fixed, plot_path, 'sens_alpha.png')
+    plot_sensitivity(df, 'beta', fixed, plot_path, 'sens_beta.png')
 
 if __name__ == '__main__':
     main()
