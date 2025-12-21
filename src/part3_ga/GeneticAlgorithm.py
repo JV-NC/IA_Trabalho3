@@ -9,9 +9,6 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))
 from utils import Item, Bin, evaluate_individual, generate_random_items, save_plot, build_bin_from_individual, plot_bin_3d, assert_no_collisions, save_dataframe_csv
 
-#TODO: refactor fitness functions for fitness selection
-#TODO: implement csv path save
-
 plot_path = 'output/plots/ga'
 metrics_path = 'output/metrics/ga'
 
@@ -33,6 +30,7 @@ PARAM_GRID = list(product(
 ))
 
 def create_individual(num_items: int) -> list[tuple[int, int]]:
+    """Create individual with a certain number of items and rotations"""
     ids = list(range(num_items))
     random.shuffle(ids)
 
@@ -44,14 +42,17 @@ def create_individual(num_items: int) -> list[tuple[int, int]]:
     return individual
 
 def fitness(individual: list[tuple[int, int]])->float:
+    """Instantiate a bin and evaluate individual using it"""
     bin = Bin(BIN_W,BIN_H,BIN_D)
     return evaluate_individual(
         individual,
         items,
-        bin
+        bin,
+        'item_rejected'
     )
 
 def ox_crossover(p1, p2):
+    """Crossover parents genes, creating two oposite children"""
     size = len(p1)
     a, b = sorted(random.sample(range(size), 2))
 
@@ -74,17 +75,20 @@ def ox_crossover(p1, p2):
     return make_child(p1, p2), make_child(p2, p1)
 
 def mutate_swap(individual: list[tuple[int, int]])->list[tuple[int, int]]:
+    """Mutate swaping individual's genes"""
     i, j = random.sample(range(len(individual)), 2)
     individual[i], individual[j] = individual[j], individual[i]
     return individual
 
 def mutate_rotation(individual: list[tuple[int, int]])->list[tuple[int, int]]:
+    """Mutate individual changing the rotation"""
     i = random.randrange(len(individual))
     item_id, _ = individual[i]
     individual[i] = (item_id, random.randint(0, 5))
     return individual
 
 def mutate(individual: list[tuple[int, int]])->list[tuple[int, int]]:
+    """Choose between swap or rotation"""
     if random.random() < 0.5:
         return mutate_swap(individual)
     else:
@@ -141,6 +145,7 @@ class GA:
         return best, self.fitness_fn(best)
 
 def plot_history(history_best: list[float], history_avg: list[float], filename: str='fitness_evo_gen.png')->None:
+    """Plot population history"""
     plt.figure()
     plt.plot(history_best, label='Best fitness')
     plt.plot(history_avg, label='Average fitness')
@@ -159,6 +164,7 @@ def run_ga_config(
     max_iters: int,
     seed: int,
 ):
+    """Run ga with specific configuration and returns its execution time, best_ind, best_fit, history and the parameters in a dict"""
     random.seed(seed)
 
     start = time.perf_counter()
@@ -197,6 +203,7 @@ def plot_sensitivity_1d(
     fixed_params: dict[str,float],
     filename: str,
 )->None:
+    """Plot sensitivity graph changing one hyperparameter and fixating the others """
     subset = df.copy()
 
     for k, v in fixed_params.items():
@@ -219,6 +226,7 @@ def plot_sensitivity_1d(
 def main():
     start = time.perf_counter()
 
+    #Appling parallelism with joblib
     raw_results = Parallel(n_jobs=-1,backend='loky')(
         delayed(run_ga_config)(
             i,pop,cx,mut,iters,seed=SEED)
