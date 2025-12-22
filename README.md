@@ -184,7 +184,7 @@ Os dados são Z-Normalizados de forma a contrapor os efeitos de variância de ca
 
 ---
 
-### 3. Saída
+### Saída
 
 Para cada algoritmo de aprendizado executado serão gerados os seguintes arquivos na pasta `/output/`:
 
@@ -195,7 +195,7 @@ Para cada algoritmo de aprendizado executado serão gerados os seguintes arquivo
 
 # Trabalho 3.3 - Bin Packing com Algoritmo Genético
 
-Este trabalho tem como objetivo implementar o algoritmo genético de aprendizado de máquina de forma a eficientemente posicionar objetos 3D no mínimo de contâiners possível, consequentemente ocupando o máximo de volume possível por contâiner.
+Este trabalho tem como objetivo implementar o algoritmo genético de aprendizado de máquina de forma a eficientemente posicionar objetos 3D no mínimo de espaço em um contâiner possível, consequentemente ocupando o máximo de volume possível do contâiner.
 
 ---
 
@@ -203,7 +203,7 @@ Este trabalho tem como objetivo implementar o algoritmo genético de aprendizado
 
 O projeto utiliza uma abordagem evolutiva para organizar itens em um espaço tridimensional. Buscou-se a melhor sequência de inserção dos itens para minimizar o espaço vazio dentro de um volume delimitado.
 
-As métricas e componentes principais utilizados são:
+As métricas utilizadas para aferir a efetividade de uma iteração e/ou uma configuração de hiperparâmetros foram:
 
 **`fill_ratio`:** Porcentagem do volume total do contêiner que foi efetivamente preenchida por itens.
 
@@ -211,12 +211,7 @@ As métricas e componentes principais utilizados são:
 
 **`time_sec`:** Tempo de execução necessário para o algoritmo completar o número total de iterações em cada configuração.
 
-#### Componentes do Algoritmo Genético
-A classe `GA` no script principal gerencia o ciclo de vida evolutivo:
-
-
-
-#### Mecanismos do Algoritmo
+#### Mecanismos
 A implementação segue o ciclo de vida clássico de um Algoritmo Genético, adaptado para problemas de permutação:
 
 - **Representação (Cromossomo):** Cada indivíduo é representado por uma lista de índices (ex: `[5, 2, 19, 0, ...]`). Esta lista define a **ordem de prioridade** em que os itens serão processados pelo algoritmo de posicionamento 3D.
@@ -248,8 +243,8 @@ No arquivo `utils.py` estão localizadas as funções auxiliares para manipulaç
 
 ---
 
-### 3. Saída
-Após a execução do algoritmo uma saída similar ao exemplo a seguir deve ser gerada, com as métricas de desempenho variando conforme o hardware utilizado.
+### Saída
+Após a execução do algoritmo uma saída similar ao exemplo a seguir deve ser gerada, com as métricas de tempo variando conforme o hardware utilizado.
 
 ```
 Total GA grid search time: 424.07s
@@ -266,6 +261,53 @@ fitness = 0.8296
 fill ratio = 82.96%
 time (sec) = 17.25
 ```
+
+Além disso, os seguintes arquivos serão gerados em `/src/part3_ga/output`:
+
+- `metrics/ga/ga_sensitivity_results.csv`: Arquivo `csv` contendo as metricas usadas para aferir o desempenho dos algoritmos ao longo de modificações nos seus hiperparâmetros.
+- `plots/ga/bin_final_3d.png`: Imagem `png` gerada para representar a organização final dos blocos na bin após todas a iterações.
+- `plots/ga/fitness_evo_gen.png`: Gráfico gerado representando a aptidão ao longo das iterações da configuração final de hiperparâmetros.
+- `plots/ga/sens_[...].png`: 4 Gráficos representando a sensibilidade dos hiperparâmetros conforme variações.
+
+# Trabalho 3.4 - Bin Packing com Colônia de Formigas e Sistema Imune
+
+Este trabalho tem como objetivo implementar o ACO e CLONALG de aprendizado de máquina de forma a eficientemente posicionar objetos 3D no mínimo de espaço em um contâiner possível, consequentemente ocupando o máximo de volume possível do contâiner.
+
+## Sobre a escolha de Algoritmos
+
+No problema de Bin Packing 3D com uma única bin, utilizando a heurística BLF (Bottom–Left–Front), o Ant Colony Optimization (ACO) tende a apresentar desempenho superior ao Particle Swarm Optimization (PSO) principalmente pela forma como cada método lida com decisões discretas, dependência de ordem e construção incremental da solução. 
+Já o CLONALG apresenta vantagens claras em relação ao algoritmo de Seleção Negativa devido à sua maior capacidade de busca adaptativa e otimização iterativa de soluções candidatas. O empacotamento 3D com BLF é fortemente dependente da ordem de inserção dos itens, caracterizando um problema combinatório no qual pequenas variações na sequência podem resultar em diferenças significativas na ocupação volumétrica. 
+
+### Saída
+Após a execução dos algoritmos saídas similares ao exemplo a seguir deve ser gerada, com as métricas de tempo variando conforme o hardware utilizado.
+
+```
+Total ACO grid search time: 607.32s
+total item volume = 51129
+bin volume = 31250
+item/bin rate = 1.6361
+
+===== BEST ACO CONFIGURATION =====
+n_ants: 40
+n_best: 3
+n_iters: 80
+decay: 0.2
+alpha: 1.0
+beta: 2.0
+fitness = 0.8806
+time (sec) = 13.88
+Fill ratio = 88.06%
+```
+
+Além disso, os seguintes arquivos serão gerados em `/src/part4_swarm_immune/output`:
+
+**ACO**:
+
+- `/metrics/ALGORITMO/sensitivity_results.csv`: Arquivo `csv` contendo as metricas usadas para aferir o desempenho dos algoritmos ao longo de modificações nos seus hiperparâmetros.
+- `/plots/ALGORITMO/bin_final_3d.png`: Imagem `png` gerada para representar a organização final dos blocos na bin após todas a iterações.
+- `/plots/ALGORITMO/fitness_evo_iter.png`: Gráfico gerado representando a aptidão ao longo das iterações da configuração final de hiperparâmetros.
+- `/plots/ALGORITMO/sens_[...].png`: 4 Gráficos representando a sensibilidade dos hiperparâmetros conforme variações.
+
 
 # Autores
 
