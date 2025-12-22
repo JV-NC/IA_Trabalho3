@@ -2,6 +2,26 @@
 
 Este Repositório contém todos os 4 trabalhos da etapa final da disciplina de Inteligência Artificial, que aborda Algoritmos de Aprendizagem. 
 
+## Utilização Global
+
+Apesar de cada Parte do Trabalho poder ser executada separadamente e possuir instruções específicas para tal. O repositório como um todo pode ser executado automaticamente através de um script, conforme as instruções a seguir:
+
+### 1. Pré-requisitos
+- Certifique-se de estar no Linux
+- Ter o **Python 3.12** ou superior instalado em seu sistema. 
+- Ter o venv (Virtual Environment) disponível.
+- O **PATH** deve estar configurado corretamente.
+
+---
+
+### 2. Execução
+Abra um terminal e navegue até o diretório raiz do projeto.  
+Execute o comando:
+
+```bash
+./run.sh
+```
+
 ## Estrutura Geral
 
 O projeto segue a seguinte estrutura de pastas:
@@ -216,6 +236,100 @@ Para cada algoritmo de aprendizado executado serão gerados os seguintes arquivo
 - `models/ALGORITMO/ALGORITMO_fold_X`: Arquivo binário `pkl` gerado usando a biblioteca `pickle` para armazenar o modelo de predição de cada `fold`.
 - `plots/ALGORITMO/cm_fold_X`: Imagem `png` gerada usando a biblioteca `matplotlib` para representar a matriz de confusão do modelo de predição de cada `fold`.
 - `plots/ALGORITMO/roc_fold_X`: Imagem `png` gerada usando a biblioteca `matplotlib` para representar a matriz de confusão do modelo de predição de cada `fold`.
+
+# Trabalho 3.3 - Bin Packing com Algoritmo Genético
+
+Este trabalho tem como objetivo implementar o algoritmo genético de aprendizado de máquina de forma a eficientemente posicionar objetos 3D no mínimo de contâiners possível, consequentemente ocupando o máximo de volume possível por contâiner.
+
+---
+
+### Implementação
+
+O projeto utiliza uma abordagem evolutiva para organizar itens em um espaço tridimensional. Buscou-se a melhor sequência de inserção dos itens para minimizar o espaço vazio dentro de um volume delimitado.
+
+As métricas e componentes principais utilizados são:
+
+**`fill_ratio`:** Porcentagem do volume total do contêiner que foi efetivamente preenchida por itens.
+
+**`fitness`:** Valor de aptidão calculado com base na eficiência do empacotamento, utilizado pelo GA para selecionar os melhores indivíduos.
+
+**`time_sec`:** Tempo de execução necessário para o algoritmo completar o número total de iterações em cada configuração.
+
+#### Componentes do Algoritmo Genético
+A classe `GA` no script principal gerencia o ciclo de vida evolutivo:
+
+
+
+#### Mecanismos do Algoritmo
+A implementação segue o ciclo de vida clássico de um Algoritmo Genético, adaptado para problemas de permutação:
+
+- **Representação (Cromossomo):** Cada indivíduo é representado por uma lista de índices (ex: `[5, 2, 19, 0, ...]`). Esta lista define a **ordem de prioridade** em que os itens serão processados pelo algoritmo de posicionamento 3D.
+  
+- **Seleção (`select`):** Implementada via **Seleção por Torneio**. O código sorteia k indivíduos (padrão $k=2$) e seleciona aquele com o maior valor de `fitness`. Isso garante pressão seletiva enquanto mantém a diversidade da população.
+
+- **Crossover (`ox_crossover`):** Como o problema exige que cada item seja único no empacotamento, utiliza-se o **Crossover de Ordem (OX)**. Este operador copia um segmento de um pai e preenche o restante com os genes do outro pai na ordem em que aparecem, evitando duplicatas.
+
+
+- **Mutação (`mutate`):** Utiliza a **Mutação por Troca (Swap)**. Com uma probabilidade definida por `mut_rate`, dois índices do cromossomo são trocados de posição. Isso altera a sequência de empacotamento, permitindo que o algoritmo explore novas organizações espaciais.
+
+- **Loop Evolutivo (`step` & `run`):** - A função `step` cria uma nova geração completa através de seleção, cruzamento e mutação.
+    - A função `run` gerencia as iterações e mantém um registro histórico (`history_best` e `history_avg`) para análise de convergência, além de garantir o elitismo ao rastrear o melhor indivíduo global.
+
+#### Paralelismo e Grid Search
+Para encontrar a configuração ideal de hiperparâmetros, o script utiliza:
+
+- **Busca em Grade (Grid Search):** O `product` do `itertools` gera todas as combinações possíveis de `POP_SIZES`, `CX_RATES`, `MUT_RATES` e `MAX_ITERS`.
+- **Joblib (`Parallel`):** O backend `loky` é utilizado para distribuir cada configuração da grade para um núcleo diferente do processador (`n_jobs=-1`), acelerando o processamento.
+
+#### Funções importadas
+No arquivo `utils.py` estão localizadas as funções auxiliares para manipulação geométrica e visualização:
+
+- **generate_random_items:** Gera um conjunto de itens com dimensões (W, H, D) aleatórias dentro de intervalos pré-definidos.
+- **build_bin_from_individual:** Construtor que recebe uma sequência de itens e tenta posicioná-los no espaço 3D seguindo uma lógica de empacotamento.
+- **assert_no_collisions:** Função de validação que garante que nenhum item sobrepõe o outro no espaço tridimensional.
+- **plot_bin_3d:** Gera uma visualização 3D interativa ou estática do contêiner finalizado.
+- **plot_sensitivity:** Gera gráficos comparativos para analisar o impacto de cada hiperparâmetro no desempenho final.
+
+---
+
+### Utilização
+
+#### 1. Pré-requisitos
+- Certifique-se de ter o **Python 3.12** ou superior instalado.
+- O **PATH** deve estar configurado corretamente. 
+
+#### Dependências
+Para instalar as dependências necessárias, execute o comando:
+```bash
+pip install pandas numpy joblib matplotlib
+```
+
+#### 2. Execução
+Abra um terminal e navegue até o diretório raiz do projeto.  
+Execute o comando:
+
+```bash
+python src/part3_ga/GeneticAlgorithm.py
+```
+
+#### 3. Saída
+Após a execução do algoritmo uma saída similar ao exemplo a seguir deve ser gerada, com as métricas de desempenho variando conforme o hardware utilizado.
+
+```
+Total GA grid search time: 424.07s
+total item volume = 51129
+bin volume = 31250
+item/bin rate = 1.6361
+
+===== BEST CONFIGURATION =====
+pop_size: 50
+cx_rate: 0.6
+mut_rate: 0.4
+max_iters: 150
+fitness = 0.8296
+fill ratio = 82.96%
+time (sec) = 17.25
+```
 
 # Autores
 
