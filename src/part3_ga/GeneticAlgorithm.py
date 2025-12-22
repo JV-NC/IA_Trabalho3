@@ -168,7 +168,7 @@ def main():
     
     df['fill_ratio'] = fill_ratios
     
-    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'ga_sensitivity_results.csv')
+    save_dataframe_csv(df.drop(columns=['best_ind', 'history_best', 'history_avg']), metrics_path, 'sensitivity_results.csv')
     # best_row = df.loc[df['fill_ratio'].idxmax()]
     # print(f'\nbest fill_ratio = {100*best_row['fill_ratio']:.2f}%')
     mid_value = lambda lst: lst[len(lst)//2]
