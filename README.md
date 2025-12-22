@@ -22,6 +22,7 @@ Abra um terminal e navegue até o diretório raiz do projeto.
 Execute o comando:
 
 ```bash
+chmod +x run.sh
 ./run.sh
 ```
 
