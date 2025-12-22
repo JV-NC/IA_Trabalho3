@@ -4,7 +4,7 @@ Este Repositório contém todos os 4 trabalhos da etapa final da disciplina de I
 
 ## Utilização Global
 
-Apesar de cada Parte do Trabalho poder ser executada separadamente e possuir instruções específicas para tal. O repositório como um todo pode ser executado automaticamente através de um script, conforme as instruções a seguir:
+Apesar de cada Parte do Trabalho poder ser executada separadamente. O repositório como um todo é feito para ser executado automaticamente através de um script, conforme as instruções a seguir:
 
 ### 1. Pré-requisitos
 - Certifique-se de estar no Linux
@@ -13,6 +13,9 @@ Apesar de cada Parte do Trabalho poder ser executada separadamente e possuir ins
 - O **PATH** deve estar configurado corretamente.
 
 ---
+
+### Peparação do dataset
+- Mova os dois arquivos na pasta do [dataset](https://www.kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction) para a pasta `/data/kaggle_dataset`.
 
 ### 2. Execução
 Abra um terminal e navegue até o diretório raiz do projeto.  
@@ -99,23 +102,7 @@ Foram construídas **5 funções em Python**:
 
 ---
 
-### Utilização
-
-#### 1. Pré-requisitos
-- Certifique-se de ter o **Python 3.12** ou superior instalado em seu sistema.  
-- O **PATH** deve estar configurado corretamente.  
-- Certifique-se que o arquivo `parts.json`, contendo as informações dos componentes, esteja no diretório: `/data/part1_JSON/`
-
----
-
-#### 2. Execução
-Abra um terminal e navegue até o diretório raiz do projeto.  
-Execute o comando:
-
-```bash
-python /src/part1_decision_tree/DecisionTree.py
-```
-#### 3. Saída
+### Saída
 
 Em cada etapa da Árvore de Decisão o usuário será requisitado a responder a pergunta atual impressa na interface de comando, sendo também informado do conjunto de respostas válidas. Ao final de todas as perguntas, a tabela final de componentes será impressa seguindo a seguinte estrutura de exemplo:
 
@@ -197,38 +184,7 @@ Os dados são Z-Normalizados de forma a contrapor os efeitos de variância de ca
 
 ---
 
-### Utilização
-
-#### 1. Pré-requisitos
-- Certifique-se de ter o **Python 3.12** ou superior instalado em seu sistema.  
-- O **PATH** deve estar configurado corretamente.  
-
-#### Preparação do Dataset
-- Mova a pasta do [dataset](https://www.kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction) `/kaggle_dataset` para a pasta `/data/`.
-- Em seguida execute o script `src/common/merge_csv` para unir a bases de dados de treinamento e teste usando o seguinte comando:
-
-```bash
-python src/common/merge_csv.py
-```
-
-#### Dependências
-Para instalar as dependências, abra um terminal e execute o seguinte comando
-```bash
-pip install pandas numpy scikit-learn joblib matplotlib
-```
----
-
-#### 2. Execução
-Abra um terminal e navegue até o diretório raiz do projeto.  
-Execute o comando:
-
-```bash
-python /src/part2_ml/ALGORITMO.py
-```
-
-Substituindo ALGORITMO pela sigla do método que deseja executar: `dt` para Árvore de Decisão, `knn` para K-Vizinhos Próximos e `svm` para Máquina de Vetores de Suporte.
-
-#### 3. Saída
+### 3. Saída
 
 Para cada algoritmo de aprendizado executado serão gerados os seguintes arquivos na pasta `/output/`:
 
@@ -292,27 +248,7 @@ No arquivo `utils.py` estão localizadas as funções auxiliares para manipulaç
 
 ---
 
-### Utilização
-
-#### 1. Pré-requisitos
-- Certifique-se de ter o **Python 3.12** ou superior instalado.
-- O **PATH** deve estar configurado corretamente. 
-
-#### Dependências
-Para instalar as dependências necessárias, execute o comando:
-```bash
-pip install pandas numpy joblib matplotlib
-```
-
-#### 2. Execução
-Abra um terminal e navegue até o diretório raiz do projeto.  
-Execute o comando:
-
-```bash
-python src/part3_ga/GeneticAlgorithm.py
-```
-
-#### 3. Saída
+### 3. Saída
 Após a execução do algoritmo uma saída similar ao exemplo a seguir deve ser gerada, com as métricas de desempenho variando conforme o hardware utilizado.
 
 ```
